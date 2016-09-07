@@ -1,0 +1,64 @@
+<div class="card-box">
+    <div class="m-t-0 header-title">
+        <button class="btn btn-primary waves-effect waves-light w-xs m-b-5" onclick="ajax_replace('/tickets/create', 'replace_body')">创建工单</button>
+    </div>
+    <table class="tablesaw table m-b-0 tablesaw-swipe tablesaw-sortable" id="table-6360" style="">
+        <thead>
+            <tr>
+                <th>工单号</button></th>
+                <th class="tablesaw-sortable-head"><button class="tablesaw-sortable-btn">申请人</button></th>
+                <th class="tablesaw-sortable-head"><button class="tablesaw-sortable-btn">业务名</button></th>
+                <th class="tablesaw-sortable-head"><button class="tablesaw-sortable-btn">平台名</button></th>
+                <th class="tablesaw-sortable-head"><button class="tablesaw-sortable-btn">工单类型</button></th>
+                <th class="tablesaw-sortable-head"><button class="tablesaw-sortable-btn">当前状态</button></th>
+                <th class="tablesaw-sortable-head"><button class="tablesaw-sortable-btn">操作</button></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in tickets %}
+            <tr>
+                <td>#{{ticket.id}}</td>
+                <td>{{ticket.username}}</td>
+                <td>{{ticket.appname}}</td>
+                <td>{{ticket.platname}}</td>
+                {% if ticket.category == "install" %}
+                <td>装服</td>
+                {% else %}
+                <td>合服</td>
+                {% endif %}
+                <td>
+                    {% if ticket.status == 1 %}
+                    <span class="label label-warning">未处理</span>
+                    {% elif ticket.status == 2 %}
+                    <span class="label label-pink">拒绝</span>
+                    {% elif ticket.status == 3 %}
+                    <span class="label label-primary">已处理</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-icon waves-effect waves-light btn-info m-b-5" data-toggle="modal" onclick="ajax_replace('/ticket/{{ticket.id}}/info', 'replace_modal')" data-target="#form-modal">详情</button>
+                    {% if user.role != 2 %}
+                    <button class="btn btn-icon waves-effect btn-default m-b-5">撤销</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="m-b-0">
+        <div class="dataTables_paginate paging_simple_numbers" id="datatable-responsive_paginate">
+            <ul class="pagination">
+                <li class="paginate_button previous disabled" aria-controls="datatable-responsive" tabindex="0" id="datatable-responsive_previous"><a href="#">Previous</a></li>
+                <li class="paginate_button active" aria-controls="datatable-responsive" tabindex="0"><a href="#">1</a></li>
+                <li class="paginate_button " aria-controls="datatable-responsive" tabindex="0"><a href="#">2</a></li>
+                <li class="paginate_button " aria-controls="datatable-responsive" tabindex="0"><a href="#">3</a></li>
+                <li class="paginate_button " aria-controls="datatable-responsive" tabindex="0"><a href="#">4</a></li>
+                <li class="paginate_button " aria-controls="datatable-responsive" tabindex="0"><a href="#">5</a></li>
+                <li class="paginate_button " aria-controls="datatable-responsive" tabindex="0"><a href="#">6</a></li>
+                <li class="paginate_button next" aria-controls="datatable-responsive" tabindex="0" id="datatable-responsive_next"><a href="#">Next</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+{% include "common/modal.html" %}

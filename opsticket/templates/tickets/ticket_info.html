@@ -1,0 +1,30 @@
+<div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h4 class="modal-title">{{ subject }}</h4>
+</div>
+<div class="modal-body">
+    <table class="table table-bordered m-0">
+        <thead>
+            <th>区服ID</th>
+            <th>类型</th>
+            <th>截至时间</th>
+        </thead>
+        <tbody>
+        {% for t in ts %}
+            <tr>
+                <td>{{t.target}}</td>
+                {% if t.ticket.category == "install" %}
+                <td>装服</td>
+                {% else %}
+                <td>合服</td>
+                {% endif %}
+                <td>{{t.limit_at}}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="modal-footer">
+    <a class="btn btn-danger waves-effect waves-light" onclick='ajax_submit("{{url_for('ticket.ticket_deny', tid=tid)}}", "replace_body")'>驳回</a>
+    <a class="btn btn-primary waves-effect waves-light" onclick='ajax_submit("{{url_for('ticket.ticket_accept', tid=tid)}}", "replace_body")'>批准</a>
+</div>

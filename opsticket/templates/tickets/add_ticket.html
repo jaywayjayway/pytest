@@ -1,0 +1,112 @@
+<div class="panel">
+    <div class="panel-body">
+        <div class="row">
+            <div class="card-box">
+                <div class="row">
+                    <div class="col-sm-2">
+                        <select id="app" name="app_id" class="form-control select2">
+                            <option value="">--- 选择游戏 ---</option>
+                            <option value=71>大主宰</option>
+                            <option value=2>佛本是道</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary waves-effect waves-light w-xs m-b-5">申请装服</button>
+                    <button class="btn btn-purple waves-effect waves-light w-xs m-b-5">申请合服</button>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="card-box">
+                <div class="row" id="zones">
+                    <h4>请先选择一个游戏进行操作!</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+var checked=[];
+Array.prototype.remove = function(index){
+    this.splice(index,1);
+}
+
+$(".select2").select2();
+$(".select2").on("change", function(e){
+    var gameid=e.val;
+    if(!gameid){
+        return ;
+    }
+    $.ajax({
+        url: '/extra/'+gameid+'/zones',
+        type: 'GET',
+        success: function(data){
+            var p = JSON.parse(data);
+            var b="";
+            if(p["success"]){
+                for(var i=0;i<p["msg"].length;i++){
+                b+='<div class="zone" onclick="checkzone(event)"><div class="zone-text" id="'+p["msg"][i]["sid"]+'">'+p["msg"][i]["zone"]+'</div></div>';
+                }
+            }
+            $("#zones").html(b);
+        }
+    });
+});
+
+function checkzone(e){
+    var c=$(e.target);
+    if(c.hasClass("zone-selected")){
+        c.removeClass("zone-selected");
+        for(var i=0;i<checked.length;i++){
+            if(checked[i]==e.target.id){
+                checked.remove(i);
+            }
+        }
+    }else{
+        c.addClass("zone-selected");
+        checked.push(e.target.id);
+    };
+    console.log(e);
+    console.log(checked);
+}
+
+
+/////////////////////
+var body=[];
+
+function addToTable(){
+    var data={};
+    var app_id = $("#app").val();
+    var appname = $("#app").children("option:selected").text();
+    var category = $("#cate").val();
+    var cate = $("#cate").children("option:selected").text();
+
+    data["app_id"] = {"value":app_id,"text":appname};
+    data["category"] = {"value":category,"text":cate};
+    data["sid"] = {"value":$("#sid").val(), "text":$("#sid").val()}
+    data["limit_at"] = {"value":$("#limit").val(), "text":$("#limit").val()}
+    console.log($("#sid").val());
+    if(!$("#sid").val() || !$("#limit").val()){
+        alert("请填写区服ID和日期");
+        return
+    }
+    $("#sid").val("");
+    $("#limit").val("");
+    addtablerow(data);
+    body.push(data);
+    $(".select2").prop("disabled", true);
+}
+
+function createTicket(url){
+    console.log(body)
+    $.ajax({
+        url:url,
+        type:'POST',
+        contentType:'application/json',
+        data:JSON.stringify(body),
+        success:function(data){
+            broadcast(data);
+        }
+    })
+    ajax_replace('{{url_for("ticket.ticket_list")}}', 'replace_body')
+}
+</script>
