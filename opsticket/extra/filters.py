@@ -9,6 +9,9 @@ def dateformat(s, formatter='%Y-%m-%d %H:%M:%S'):
 def AnonymousLogin():
     return redirect(url_for('auth.login'))
 
+def unix_to_datetime(s):
+    return str(datetime.fromtimestamp(int(s)))
+
 if __name__ == '__main__':
     now = datetime.now()
     print dateformat(now)

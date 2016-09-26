@@ -55,13 +55,14 @@ class User(Model, UserMixin):
     def encryption(self, string):
         return hashlib.md5('YB$a,3'+string+'$$%@cds').hexdigest()
 
-    def __init__(self, account, username, email, password, role, platid): 
+    def __init__(self, account, username, email, password, role, platid, platname): 
         self.account = account
         self.username = username
         self.email = email
         self.password = self.encryption(password)
         self.role = role
         self.plat_id = platid
+        self.platname = platname
 
 
 class App(Model):
@@ -85,6 +86,7 @@ class Ticket(Model):
     user_id = db.Column(db.Integer)
     create_at = db.Column(db.DateTime, default=datetime.datetime.now)
     updated_at = db.Column(db.DateTime)
+    deleted = db.Column(db.Boolean, default=False)
 
     __tablename__ = 'ticket'
 
@@ -92,6 +94,7 @@ class TicketSub(Model):
     id = db.Column(db.Integer, primary_key=True)
     target = db.Column(db.String(100))
     limit_at = db.Column(db.String(150))
+    allow = db.Column(db.Boolean)
     ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'))
     ticket = db.relationship('Ticket', backref=db.backref('ticketsub', lazy='dynamic'))
 

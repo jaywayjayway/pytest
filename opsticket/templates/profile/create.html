@@ -1,0 +1,80 @@
+<div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h4 class="modal-title">{{ subject }}</h4>
+</div>
+<form role="form" class="form-horizontal" id="profile_create">
+<div class="modal-body">
+        <div class="form-group">
+            <label class="col-md-2 control-label">选择游戏</label>
+            <div class="col-md-10">
+                <select class="form-control select2" required name="app_id">
+                    <option value="">------ 请选择游戏 ------</option>
+                    {% for g in games %}
+                    <option value="{{g.gameid}}">{{g.appname}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-md-2 control-label">最大装服数</label>
+            <div class="col-md-10">
+                <input required type="text" class="form-control" placeholder="单台服务器最大装服数" value="{{s.single_max_size}}" name="single_max_size"></input>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-md-2 control-label">内存消耗</label>
+            <div class="col-md-10">
+                <input required type="text" class="form-control" placeholder="单个区服的内存消耗" value="{{s.single_ram}}" name="single_ram"></input>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-md-2 control-label">CPU消耗</label>
+            <div class="col-md-10">
+                <input required type="text" class="form-control" placeholder="单个区服的CPU核数消耗" value="{{s.single_core}}" name="single_core"></input>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-md-2 control-label">区服ID差</label>
+            <div class="col-md-10">
+                <input required type="text" class="form-control" placeholder="单台服务器上，区服ID的最大差" value="{{s.single_step}}" name="single_step"></input>
+            </div>
+        </div>
+        <input id="appname" name="appname" hidden type="text"></input>
+</div>
+<div class="modal-footer">
+    <a type="submit" class="btn btn-primary waves-effect waves-light" onclick="submit_profile()">提交</a>
+</div>
+</form>
+<script>
+var $app=$(".select2").select2();
+$(".select2").on("change", function(e){
+    $("#appname").val($(e.target).find("option:selected").text());
+});
+
+{% if s %}
+$app.val({{s.app_id}}).trigger("change");
+{% endif %}
+
+function submit_profile(){
+    if(!document.forms["profile_create"].checkValidity()){
+        return false;
+    }
+    var url='{{url}}';
+    $.ajax({
+        url:url,
+        type:'POST',
+        data:$("#profile_create").serialize(),
+        success:function(data){
+            $('#form-modal').modal('hide');
+            broadcast(data);
+        },
+        error:function(data){
+            $.Notification.notify('error','bottom right','啊啊啊啊啊啊', '网络有点问题了 >.<');
+        },
+        complete:function(){
+            ajax_replace("{{url_for('profile.setting_list')}}", 'replace_body');
+        }
+    });
+　  $(".modal-backdrop").remove();
+}
+</script>

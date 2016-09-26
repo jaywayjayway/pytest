@@ -1,0 +1,91 @@
+<div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h4 class="modal-title">{{ subject }}</h4>
+</div>
+<form role="form" class="form-horizontal">
+    <div class="modal-body" id="modal_merge">
+        <div class="form-group">
+            <label class="col-md-2 control-label">合服时间</label>
+            <div class="col-md-10">
+                <input id="limit" name="limit" required class="form-control"></input>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-md-2 control-label">合服范围</label>
+            <div class="col-md-10">
+                <input class="form-control" id="merge_range" disabled=""></input>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <a class="btn btn-primary waves-effect waves-light" id="submit_a" onclick='submit_merge("{{url_for('ticket.ticket_create')}}")'>提交</a>
+    </div>
+</form>
+
+
+<script>
+jQuery(document).ready(function($) {
+    $("#limit").datetimepicker({
+        format:'YYYY-MM-DD HH:mm',
+    });
+    var flag=true;
+    var t;
+    var r='';
+    var point=document.getElementById('modal_merge');
+    for(var i in checked){
+        console.log(checked);
+        console.log(i);
+        console.log(checked[i]);
+        r += checked[i]+',';
+        var p=checked[i];
+        if(p.indexOf('-')>0){
+            p=p.split('-')[-1];
+        }
+        if(t==undefined){
+            t = parseInt(p)+1;
+            continue;
+        }
+        if(t!=parseInt(i)){
+            point.innerHTML='<div class="panel panel-color panel-danger"><div class="panel-heading"><h3>选择了不连续的区服,无法进行合服申请!</h3></div></div>';
+            flag=false;
+            $("#submit_a").remove();
+        }
+        t = parseInt(p)+1;
+    }
+    if(flag){
+        $("#merge_range").val(r);
+    }
+});
+
+function submit_merge(url){
+    var app_id=$("#app").val();
+    if(!$("#limit").val()){
+        alert("请选择合服时间");
+        return;
+    }
+    var unix = moment($('#limit').val());
+    var sid = [];
+    for(var i in checked){
+        sid.push(i);
+    }
+    var data = {
+        "app_id": $("#app").val(),
+        "appname": $("#app").find("option:selected").text(),
+        "category": "merge",
+        "children": JSON.stringify([{"sid":sid.join(","), "limit":unix.unix()}]),
+    }
+    $.ajax({
+        url:url,
+        type:"POST",
+        traditional:true,
+        data:data,
+        success:function(data){
+            $('#form-modal').modal('hide');
+            broadcast(data);
+        },
+        error:function(data){
+            $.Notification.notify('error','bottom right','啊啊啊啊啊啊', '网络有点问题了 >.<');
+        }
+    });
+}
+</script>

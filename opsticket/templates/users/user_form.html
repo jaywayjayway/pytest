@@ -2,37 +2,39 @@
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
     <h4 class="modal-title">{{ subject }}</h4>
 </div>
-<form role="form" class="form-horizontal" id="user_create" action='{{url_for("user.user_create")}}'>
+<form role="form" class="form-horizontal" id="user_create">
 <div class="modal-body">
         <div class="form-group">
             <label class="col-md-2 control-label">姓名</label>
             <div class="col-md-10">
-                <input type="text" name="account" class="form-control">
+                <input type="text" required name="account"  value="{{tu.account}}" class="form-control">
             </div>
         </div>
         <div class="form-group">
             <label for="example-email" class="col-md-2 control-label">账户</label>
             <div class="col-md-10">
-                <input type="text" class="form-control" name="username">
+                <input type="text" required class="form-control" value="{{tu.username}}" name="username">
             </div>
         </div>
         <div class="form-group">
             <label for="example-email" class="col-md-2 control-label">邮箱</label>
             <div class="col-md-10">
-                <input type="email" placeholder="Email" class="form-control" name="email">
+                <input type="email" required value="{{tu.email}}" class="form-control" name="email">
             </div>
         </div>
+        {% if not tu %}
         <div class="form-group">
             <label class="col-md-2 control-label">密码</label>
             <div class="col-md-10">
-                <input type="password" name="password" class="form-control">
+                <input type="password" required name="password" class="form-control">
             </div>
         </div>
+        {% endif %}
         {% if user.role == 2 %}
         <div class="form-group">
             <label class="col-md-2 control-label">所属平台</label>
             <div class="col-md-10">
-                <select class="form-control select2" name="platid">
+                <select class="form-control select2" required name="platid">
                     {% for plat in plats %}
                     <option value="{{plat.platid}}">{{plat.platename}}</option>
                     {% endfor %}
@@ -43,9 +45,9 @@
         <div class="form-group">
             <label class="col-md-2 control-label">负责游戏</label>
             <div class="col-md-10">
-                <select name="games" class="multi-select" multiple="" id="my_multi_select3" >
+                <select name="apps" class="multi-select" required multiple="" id="my_multi_select3" >
                     {% for game in games %}
-                    <option value='{{game.gameid}}'>{{game.enname}}</option>
+                    <option value={{game.gameid}}>{{game.cnname}}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -53,16 +55,24 @@
         {% endif %}
 </div>
 <div class="modal-footer">
-    <a class="btn btn-primary waves-effect waves-light" onclick='ajax_submit("{{url_for('user.user_create')}}", "user_create")'>提交</a>
+    <a class="btn btn-primary waves-effect waves-light" type="submit" onclick='submit_user()'>提交</a>
 </div>
 </form>
 <script>
-$(".select2").select2();
-
 jQuery(document).ready(function() {
+    $(".select2").select2();
+    var owner = [];
+    {% if tu %}
+    {% for i in tu.app %}
+        var p = {{i.app_id}};
+        var s = p.toString();
+        owner.push(s);
+    {% endfor %}
+    {% endif %}
     $('#my_multi_select3').multiSelect({
         selectableHeader: "<input type='text' class='form-control search-input' autocomplete='off' placeholder='search...'>",
         selectionHeader: "<input type='text' class='form-control search-input' autocomplete='off' placeholder='search...'>",
+        select: 71,
         afterInit: function (ms) {
             var that = this,
                 $selectableSearch = that.$selectableUl.prev(),
@@ -95,5 +105,28 @@ jQuery(document).ready(function() {
             this.qs2.cache();
         }
     });
+    $('#my_multi_select3').multiSelect('select', owner);
 });
+
+function submit_user(){
+    if(!document.forms["user_create"].checkValidity()){
+        return false;
+    }
+    $.ajax({
+        url:"{{url}}",
+        type:'POST',
+        data:$("#user_create").serialize(),
+        success:function(data){
+            $('#form-modal').modal('hide');
+            broadcast(data);
+        },
+        error:function(data){
+            $.Notification.notify('error','bottom right','啊啊啊啊啊啊', '网络有点问题了 >.<');
+        },
+        complete:function(){
+            ajax_replace("{{url_for('user.user_list')}}", 'replace_body');
+        }
+    });
+　  $(".modal-backdrop").remove();
+}
 </script>

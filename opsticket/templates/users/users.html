@@ -19,7 +19,10 @@
                 <td>{{user.email}}</td>
                 <td>{{user.platname}}</td>
                 <td>{{user.create_at|datetime}}</td>
-                <td><a onclick='delete_resource("{{url_for('user.user_delete', user_id=user.id)}}", this)'>删除</a></td>
+                <td>
+                    <a class="btn btn-icon waves-effect waves-light btn-info m-b-5" data-toggle="modal" data-target="#form-modal" onclick="ajax_replace('/users/{{user.id}}/update', 'replace_modal')">更新</a>
+                    <a class="btn btn-icon waves-effect btn-default m-b-5" onclick='confirm_delete("{{url_for('user.user_delete', user_id=user.id)}}", this)'>删除</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>

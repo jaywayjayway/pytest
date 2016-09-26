@@ -15,6 +15,7 @@ from flask.ext.redis import FlaskRedis
 app = Flask(__name__)
 app.config.from_object(config)
 app.jinja_env.filters['datetime'] = filters.dateformat
+app.jinja_env.filters['unix_to_datetime'] = filters.unix_to_datetime
 
 redis_store = FlaskRedis(app)
 
@@ -30,8 +31,9 @@ db = SQLAlchemy(app)
 from opsticket.views import *
 
 app.register_blueprint(auth)
-app.register_blueprint(ticket)
 app.register_blueprint(user)
+app.register_blueprint(ticket)
+app.register_blueprint(profile)
 
 app.secret_key = 'A0Zr98j/3yX R~@e23'
 app.permanent_session_lifetime = timedelta(hours=8)

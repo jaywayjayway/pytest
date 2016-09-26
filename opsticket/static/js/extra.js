@@ -1,3 +1,7 @@
+Array.prototype.remove = function(index){
+    this.splice(index,1);
+}
+
 function ajax_replace(url, id, e){
     var box = $('#'+id);
     $.ajax({
@@ -20,28 +24,23 @@ function ajax_submit(url, id, msg){
         },
         error:function(data){
             console.log(data.status);
-            $.Notification.notify('error','top right','啊啊啊啊啊啊', '网络有点问题了 >.<');
+            $.Notification.notify('error','bottom right','啊啊啊啊啊啊', '网络有点问题了 >.<');
         }
     })
     $('#form-modal').modal('hide');
 }
 
 function broadcast(data){
-    data = JSON.parse(data);
     if(data.success){
-        $.Notification.notify('success','top right','通知', data.msg);
+        $.Notification.notify('success','bottom right','通知', data.msg);
     }else{
-        $.Notification.notify('warning','top right','警告', data.msg);
+        $.Notification.notify('warning','bottom right','警告', data.msg);
     }
 }
 
 function droptablerow(row){
     var i=row.parentNode.parentNode.rowIndex;
     document.getElementById('data-table').deleteRow(i);
-    if(body){
-        console.log(body)
-        delete body["data"].i;
-    }
 }
 
 function addtablerow(data){
@@ -50,22 +49,34 @@ function addtablerow(data){
     for(var i in data){
         row.insertCell().innerText = data[i]["text"];
     }
-    //row.insertCell().innerHTML="<a class='btn-danger' onclick='droptablerow(this)'>删除</a>";
-    console.log("adddddd..............")
     return row
 }
 
-function delete_resource(url, row){
-    if(confirm('确定要删除该数据?')){
+function confirm_delete(url, row){
+    swal({
+        title: "你确认要删除?",
+        text: "我告诉你,你可想好了,删了就木有了,谁也帮不了你!",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonClass: 'btn-warning',
+        confirmButtonText: "是的,我想好了!",
+        cancelButtonText: "算了,不删了",
+        closeOnConfirm: false
+    }, function () {
         $.ajax({
             url:url,
             type:'DELETE',
             success:function(data){
-                broadcast(data);
-                droptablerow(row);
+                if(data.success){
+                    swal("成功!", data["msg"], "success");
+                    droptablerow(row);
+                }else{
+                    swal("失败!", data["msg"], "error");
+                }
+            },
+            error:function(data){
+                swal("失败!", "恭喜你现在还有后悔的机会.", "error");
             }
-        })
-    }else{
-        return ;
-    };
+        });
+    });
 }

@@ -1,7 +1,7 @@
 #coding:utf-8
 import functools
 from flask import abort, request
-from flask.ext.login import current_user
+from flask.ext.login import current_user as g
 
 
 def pageination(method):
@@ -19,7 +19,7 @@ def pageination(method):
 def require_admin(method):
     @functools.wraps(method)
     def wrapper(*args, **kwargs):
-        if current_user.role != 2:
+        if g.role != 2:
             abort(404)
         return method(*args, **kwargs)
     return wrapper

@@ -14,6 +14,8 @@ class KeystoneUser(object):
         self.email = None
         self.account = user_info["access"]["user"]["name"]
         self.role = 2
+        self.plat_id = None
+        self.platname = None
 
     def is_authenticated(self):
         return True
@@ -26,6 +28,10 @@ class KeystoneUser(object):
 
     def get_id(self):
         return self.user_id
+
+    @property
+    def token(self):
+        return self.user_info["access"]["token"]["id"]
 
     @property
     def expires(self):

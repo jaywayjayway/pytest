@@ -6,12 +6,19 @@
                     <div class="col-sm-2">
                         <select id="app" name="app_id" class="form-control select2">
                             <option value="">--- 选择游戏 ---</option>
-                            <option value=71>大主宰</option>
-                            <option value=2>佛本是道</option>
+                            {% if user.role >= 1%}
+                            {% for game in games %}
+                            <option value={{game.gameid}}>{{game.cnname}}</option>
+                            {% endfor %}
+                            {% else %}
+                            {% for game in user.app.all() %}
+                            <option value={{game.app_id}}>{{game.appname}}</option>
+                            {% endfor %}
+                            {% endif %}
                         </select>
                     </div>
-                    <button class="btn btn-primary waves-effect waves-light w-xs m-b-5">申请装服</button>
-                    <button class="btn btn-purple waves-effect waves-light w-xs m-b-5">申请合服</button>
+                    <button id='install' disabled data-toggle="modal" data-target="#form-modal" class="btn btn-primary waves-effect waves-light w-xs m-b-5" onclick="ajax_replace('/install/request', 'replace_modal')">申请装服</button>
+                    <button id='merge' disabled data-toggle="modal" data-target="#form-modal" class="btn btn-purple waves-effect waves-light w-xs m-b-5" onclick="ajax_replace('/merge/request', 'replace_modal')">申请合服</button>
                 </div>
             </div>
         </div>
@@ -24,11 +31,14 @@
         </div>
     </div>
 </div>
+
+
+{% include "common/modal.html" %}
+
+
 <script>
-var checked=[];
-Array.prototype.remove = function(index){
-    this.splice(index,1);
-}
+var checked={};
+var max_sid=0;
 
 $(".select2").select2();
 $(".select2").on("change", function(e){
@@ -36,18 +46,32 @@ $(".select2").on("change", function(e){
     if(!gameid){
         return ;
     }
+    $("#install").removeAttr("disabled");
     $.ajax({
         url: '/extra/'+gameid+'/zones',
         type: 'GET',
         success: function(data){
-            var p = JSON.parse(data);
             var b="";
-            if(p["success"]){
-                for(var i=0;i<p["msg"].length;i++){
-                b+='<div class="zone" onclick="checkzone(event)"><div class="zone-text" id="'+p["msg"][i]["sid"]+'">'+p["msg"][i]["zone"]+'</div></div>';
+            if(data.success){
+                for(var i=0;i<data.msg.length;i++){
+                    b+='<div class="zone" onclick="checkzone(event)"><div class="zone-text" id="'+data.msg[i]["sid"]+'">'+data.msg[i]["zone"]+'</div></div>';
+                };
+                if(data.msg.length>2){
+                    $("#merge").removeAttr("disabled");
+                }else{
+                    $("#merge").attr("disabled","true");
                 }
             }
             $("#zones").html(b);
+        }
+    });
+    $.ajax({
+        url: '/extra/'+gameid+'/zonelimit',
+        type: 'GET',
+        success: function(data){
+            if(data.success){
+                max_sid = parseInt(data.msg);
+            }
         }
     });
 });
@@ -56,57 +80,11 @@ function checkzone(e){
     var c=$(e.target);
     if(c.hasClass("zone-selected")){
         c.removeClass("zone-selected");
-        for(var i=0;i<checked.length;i++){
-            if(checked[i]==e.target.id){
-                checked.remove(i);
-            }
-        }
+        delete checked[e.target.id];
     }else{
         c.addClass("zone-selected");
-        checked.push(e.target.id);
+        checked[e.target.id] = e.target.innerText;
     };
-    console.log(e);
     console.log(checked);
-}
-
-
-/////////////////////
-var body=[];
-
-function addToTable(){
-    var data={};
-    var app_id = $("#app").val();
-    var appname = $("#app").children("option:selected").text();
-    var category = $("#cate").val();
-    var cate = $("#cate").children("option:selected").text();
-
-    data["app_id"] = {"value":app_id,"text":appname};
-    data["category"] = {"value":category,"text":cate};
-    data["sid"] = {"value":$("#sid").val(), "text":$("#sid").val()}
-    data["limit_at"] = {"value":$("#limit").val(), "text":$("#limit").val()}
-    console.log($("#sid").val());
-    if(!$("#sid").val() || !$("#limit").val()){
-        alert("请填写区服ID和日期");
-        return
-    }
-    $("#sid").val("");
-    $("#limit").val("");
-    addtablerow(data);
-    body.push(data);
-    $(".select2").prop("disabled", true);
-}
-
-function createTicket(url){
-    console.log(body)
-    $.ajax({
-        url:url,
-        type:'POST',
-        contentType:'application/json',
-        data:JSON.stringify(body),
-        success:function(data){
-            broadcast(data);
-        }
-    })
-    ajax_replace('{{url_for("ticket.ticket_list")}}', 'replace_body')
 }
 </script>
