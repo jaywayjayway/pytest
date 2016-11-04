@@ -3,33 +3,33 @@
 <div class="row">
     <div class="col-sm-6 col-lg-3">
         <div class="widget-simple-chart text-right card-box">
-            <div class="circliful-chart" data-dimension="90" data-text="35%" data-width="5" data-fontsize="14" data-percent="35" data-fgcolor="#5fbeaa" data-bgcolor="#ebeff2"></div>
-            <h3 class="text-success counter">2562</h3>
-            <p class="text-muted text-nowrap">Total Sales today</p>
+            <div class="circliful-chart" data-dimension="90" data-text="{{graph.user_count().than}}%" data-width="5" data-fontsize="14" data-percent="35" data-fgcolor="#5fbeaa" data-bgcolor="#ebeff2"></div>
+            <h3 class="text-success counter">{{graph.user_count().value}}</h3>
+            <p class="text-muted text-nowrap">{{graph.user_count().text}}</p>
         </div>
     </div>
 
     <div class="col-sm-6 col-lg-3">
         <div class="widget-simple-chart text-right card-box">
-            <div class="circliful-chart" data-dimension="90" data-text="75%" data-width="5" data-fontsize="14" data-percent="75" data-fgcolor="#3bafda" data-bgcolor="#ebeff2"></div>
-            <h3 class="text-primary counter">5685</h3>
-            <p class="text-muted text-nowrap">Daily visitors</p>
+            <div class="circliful-chart" data-dimension="90" data-text="{{graph.today_job().than}}%" data-width="5" data-fontsize="14" data-percent="75" data-fgcolor="#3bafda" data-bgcolor="#ebeff2"></div>
+            <h3 class="text-primary counter">{{graph.today_job().value}}</h3>
+            <p class="text-muted text-nowrap">{{graph.today_job().text}}</p>
         </div>
     </div>
 
     <div class="col-sm-6 col-lg-3">
         <div class="widget-simple-chart text-right card-box">
-            <div class="circliful-chart" data-dimension="90" data-text="58%" data-width="5" data-fontsize="14" data-percent="58" data-fgcolor="#f76397" data-bgcolor="#ebeff2"></div>
-            <h3 class="text-pink">$ <span class="counter">12480</span></h3>
-            <p class="text-muted text-nowrap">Total Earning</p>
+            <div class="circliful-chart" data-dimension="90" data-text="{{graph.install_job().than}}%" data-width="5" data-fontsize="14" data-percent="58" data-fgcolor="#f76397" data-bgcolor="#ebeff2"></div>
+            <h3 class="text-pink counter">{{graph.install_job().value}}</h3>
+            <p class="text-muted text-nowrap">{{graph.install_job().text}}</p>
         </div>
     </div>
 
     <div class="col-sm-6 col-lg-3">
         <div class="widget-simple-chart text-right card-box">
-            <div class="circliful-chart" data-dimension="90" data-text="49%" data-width="5" data-fontsize="14" data-percent="49" data-fgcolor="#98a6ad" data-bgcolor="#ebeff2"></div>
-            <h3 class="text-inverse counter">62</h3>
-            <p class="text-muted text-nowrap">Pending Orders</p>
+            <div class="circliful-chart" data-dimension="90" data-text="{{graph.merge_job().than}}%" data-width="5" data-fontsize="14" data-percent="49" data-fgcolor="#98a6ad" data-bgcolor="#ebeff2"></div>
+            <h3 class="text-inverse counter">{{graph.merge_job().value}}</h3>
+            <p class="text-muted text-nowrap">{{graph.merge_job().text}}</p>
         </div>
     </div>
 </div>

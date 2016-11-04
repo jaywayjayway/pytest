@@ -13,19 +13,46 @@ from opsticket.libs import decorator, api, utils
 ticket = Blueprint('ticket', __name__)
 
 @ticket.route('/tickets', methods=['GET'])
-@decorator.pageination
 @login_required
-def ticket_list(page, page_size):
-    if g.role == 2:
-        instance = Ticket.query.filter_by(status=1, deleted=False)
+def ticket_list():
+    if g.role == 2: 
+        instance = Ticket.query.filter(Ticket.status!=3, Ticket.status!=2, Ticket.deleted==False)
     elif g.role == 1:
-        instance = Ticket.query.filter(Ticket.status!=3).filter(Ticket.status!=4).filter_by(platname=g.platname, deleted=False)
+        instance = Ticket.query.filter(Ticket.status!=3).filter_by(platname=g.platname, deleted=False)
     else:
-        instance = Ticket.query.filter(Ticket.status!=4).filter_by(user_id=g.id, deleted=False)
-    count = instance.count()
-    tickets = instance.limit(page_size).offset(page*page_size).all()
-    return render_template('tickets/tickets.html', count=count, tickets=tickets, user=g)
+        instance = Ticket.query.filter(Ticket.status!=3).filter_by(user_id=g.id, deleted=False)
+    tickets = instance.all()
+    return render_template('tickets/tickets.html', tickets=tickets, user=g)
 
+@ticket.route('/tickets/history', methods=['GET'])
+@login_required
+def ticket_history():
+    if g.role == 2: 
+        instance = Ticket.query.filter_by(deleted=True)
+    elif g.role == 1:
+        instance = Ticket.query.filter_by(platname=g.platname, deleted=True)
+    else:
+        instance = Ticket.query.filter_by(user_id=g.id, deleted=True)
+    tickets = instance.all()
+    return render_template('tickets/tickets.html', tickets=tickets, user=g)
+
+
+@ticket.route('/tickets/today', methods=['GET'])
+@login_required
+def today_tickets():
+    if g.role == 2:
+        between = [utils.now_unix(), utils.tomrrow_work_unix()]
+        p = {}
+        for i in TicketSub.query.filter(TicketSub.limit_at.between(*between), TicketSub.allow==None).all():
+            if i.ticket_id in p:
+                continue
+            if i.ticket.deleted:
+                continue
+            p[i.ticket_id] = i.ticket
+        tickets = p.values()
+    else:
+        tickets = []
+    return render_template('tickets/tickets.html', tickets=tickets, user=g)
 
 @ticket.route('/install/request', methods=['GET'])
 @login_required
@@ -50,9 +77,7 @@ def ticket_delete(tid):
         return jsonify({"success":False,"msg":u"工单不存在!"})
     t.deleted=True
     t.save()
-    return jsonify({"success":False,"msg":u"工单删除成功!"})
-
-
+    return jsonify({"success":True,"msg":u"工单删除成功!"})
 
 @ticket.route('/tickets/create', methods=['GET','POST'])
 @login_required
@@ -73,20 +98,20 @@ def ticket_create():
         for sub in json.loads(data["children"]):
             ts=TicketSub(target=sub["sid"], limit_at=sub["limit"], ticket=tk)
             ts.save()
-            if tk.category=="install":
-                max_cache = redis_store.get(config.GAME_MAXZONE % {"gameid":tk.app_id,"platid":tk.plat_id})
-                if max_cache:
-                    try:
-                        max_cache = int(max_cache)
-                    except:
-                        continue
-                    if max_cache > int(sub["sid"]):
-                        redis_store.set(config.GAME_MAXZONE % {"gameid":tk.app_id,"platid":tk.plat_id}, sub["sid"])
+            #if tk.category=="install":
+            #    max_cache = redis_store.get(config.GAME_MAXZONE % {"gameid":tk.app_id,"platid":tk.plat_id})
+            #    if max_cache:
+            #        try:
+            #            max_cache = int(max_cache)
+            #        except:
+            #            continue
+            #        if max_cache > int(sub["sid"]):
+            #            max_value = max_cache
+            #    else:
+            #        max_value = int(sub["sid"])
+            #    redis_store.set(config.GAME_MAXZONE % {"gameid":tk.app_id,"platid":tk.plat_id}, max_value)
         return jsonify({"success":True,"msg":u"工单申请成功!"})
-    if g.role >= 1:
-        games = api.game_list(g)
-    else:
-        games = []
+    games = api.setting_list()
     return render_template('tickets/add_ticket.html', \
             subject=u"创建工单", \
             user=g, games=games)
@@ -108,13 +133,8 @@ def ticket_info(tid):
         else:
             abort(404)
     t = Ticket.query.filter_by(id=tid).first()
-    if t and t.category == "install" and g.role == 2:
-        groups = api.group_list(g, t.app_id)
-    else:
-        groups = []
     return render_template('tickets/ticket_info.html', \
-            user=g, ts=ts, t=t, subject=u"工单详情", tid=tid, \
-            groups=groups)
+            user=g, ts=ts, t=t, subject=u"工单详情", tid=tid)
 
 @ticket.route('/ticket/<int:tid>/revoke', methods=['GET'])
 @login_required
@@ -125,7 +145,9 @@ def ticket_revoke(tid):
         t=Ticket.query.filter_by(id=tid, plat_id=g.plat_id).first()
     else:
         abort(404)
-    t.status = 4 #撤销
+    if t.ticketsub.filter(TicketSub.allow!=None).count():
+        return jsonify({"success":False,"msg":u"工单已经被处理了,请联系审批人撤销!"})
+    t.deleted = True #撤销
     t.save()
     return jsonify({"success":True,"msg":u"撤销成功"})
 
@@ -134,26 +156,155 @@ def ticket_revoke(tid):
 @login_required
 @decorator.require_admin
 def ticket_sub_deny(tid, stid):
+    t = Ticket.query.filter_by(id=tid).first()
+    if not t:
+        return jsonify({"success":False,"msg":u"这个工单好像已经被别人处理了,刷新下在看看?"})
+    cmd = api.cmdid(g, t.app_id, t.category)
+    if not cmd:
+        return jsonify({"success":False,"msg":u"你没有批准此类工单的权限!"})
     ts = TicketSub.query.filter_by(id=stid).first()
     ts.allow = False
     ts.save()
-    t = Ticket.query.filter_by(id=tid).first()
     if not t.ticketsub.filter_by(allow=None).first():
         t.status = 2
         t.save()
+    else:
+        t.status = 4
+        t.save()
     return jsonify({"success":True,"msg":u"操作成功","data":ts.to_dict(hiden=['created_at','updated_at'])})
+
+@ticket.route('/ticket/accept/<int:tid>/all', methods=['POST'])
+@login_required
+@decorator.require_admin
+def ticket_allow_all(tid):
+    t=Ticket.query.filter_by(id=tid).first()
+    if not t:
+        return jsonify({"success":False,"msg":u"工单不存在"})
+    cmd = api.cmdid(g, t.app_id, t.category)
+    if not cmd:
+        return jsonify({"success":False,"msg":u"你没有批准此类工单的权限!"})
+    if not t.ticketsub.filter_by(allow=None).count():
+        return jsonify({"success":False,"msg":u"该工单已经处理完了!"})
+    
+    if t.category == "install":
+        #装服
+        sdata=api.host_scheduler(g, t.app_id, t) or {}
+        if not sdata:
+            return jsonify({"success":False,"msg":u"服务器库存不够了,无法通过审批,抓紧联系OPS!"})
+        if sdata == 2333:
+            return jsonify({"success":False,"msg":u"尚未配置调度参数,请联系OPS配置!"})
+        uuid = utils.get_uuid()
+        cache_msg={"msg":sdata, "tid":tid}
+        redis_store.set(config.SCHEDULER_ID % locals(), json.dumps(cache_msg))
+        if not sdata or len(sdata) != t.ticketsub.filter_by(allow=None).count():
+            #服务器不够,返回一个callback
+            nop = []
+            for tc in t.ticketsub.filter_by(allow=None).all():
+                if utils.now_unix() + 300 > int(ts.limit_at):
+                    return jsonify({"success":False,"msg":"工单里有任务已经过期, 请先拒绝掉过期任务!"})
+                if not sdata or str(tc.target) not in sdata:
+                    nop.append({"sid":str(tc.target)})
+            yesp = []
+            for sid,ip in sdata.items():
+                yespa.append({"sid":sid,"ip":ip})
+            #return jsonify({"success":False, "msg":{"no":nop,"yes": [{"sid":1,"ip":"1.1.1.1"}], "uuid":uuid}, "callback":"/ticket/%s/block" % tid})
+            msg = {"no":nop, "yes":yesp, "uuid":uuid}
+            return jsonify({"success":False, "msg":msg, "callback":"/ticket/%s/block" % tid})
+        p = {}
+        for ts in t.ticketsub.filter_by(allow=None).all():
+            if utils.now_unix() + 300 > int(ts.limit_at):
+                return jsonify({"success":False,"msg":"工单里有任务已经过期, 请先拒绝掉过期任务!"})
+            sid=str(ts.target)
+            ip=sdata.get(sid, None)
+            if ip in p:
+                p[ip] += ',%s' % sid
+            else:
+                p[ip] = sid
+            if not ip:
+                continue
+        ext = {"install":p}
+    else:
+        #合服
+        ts = t.ticketsub.first()
+        sids = [i for i in ts.target.split(",") if i ]
+        sids = map(int, sids)
+        ext = {"merge": "%s-%s" % (min(sids), max(sids)), "crontime": ts.limit_at}
+
+    if api.send_cmd(g, cmd, t, ext):
+        for ts in t.ticketsub.all():
+            ts.allow = True
+            ts.save()
+        if t.ticketsub.filter_by(allow=None).first():
+            t.status = 4
+            t.save()
+        else:
+            t.status = 3
+            t.save()
+        return jsonify({"success":True,"msg":u"操作成功","data":ts.to_dict()})
+
+@ticket.route('/ticket/<int:tid>/block', methods=['GET'])
+@login_required
+@decorator.require_admin
+def ticket_block(tid):
+    return render_template('tickets/accept_confitm.html', subject=u"工单批准确认", user=g)
+
+@ticket.route('/ticket/confirm/<string:uuid>', methods=['GET'])
+@login_required
+@decorator.require_admin
+def ticket_confirm(uuid):
+    cache_msg = redis_store.get(config.SCHEDULER_ID % locals())
+    try:
+        cache_msg = json.loads(cache_msg)
+    except:
+        return jsonify({"success":False,"msg":u"分配信息已失效,请重新审核!"})
+    tid = cache_msg["tid"]
+    msg = cache_msg["msg"]
+    t = Ticket.query.filter_by(id=tid).first()
+    cmd = api.cmdid(g, t.app_id, t.category)
+    if not cmd:
+        return jsonify({"success":False,"msg":u"你没有批准此类工单的权限!"})
+    p={}
+    for sid, ip in msg.items():
+        if ip in p:
+            p[ip] += ",%s" % sid
+        else:
+            p[ip] = str(sid)
+    ext = {"install": p}
+    if api.send_cmd(g, cmd, t, ext):
+        redis_store.delete(config.SCHEDULER_ID % locals())
+        for ts in t.ticketsub.filter(TicketSub.target.in_(list(msg))).all():
+            ts.allow=True
+            ts.save()
+        if t.ticketsub.filter_by(allow=None).first():
+            t.status=4
+        else:
+            t.status=3
+        t.save()
+        return jsonify({"success":True,"msg":u"工单批准成功!"})
+    return jsonify({"success":False,"msg":u"工单批准失败!"})
 
 @ticket.route('/ticketsub/<int:tid>/allow/<int:stid>', methods=['POST'])
 @login_required
 @decorator.require_admin
 def ticket_sub_allow(tid, stid):
     ts = TicketSub.query.filter_by(id=stid).first()
+    print ts.limit_at, utils.now_unix()
+    if utils.now_unix() + 300 > int(ts.limit_at):
+        return jsonify({"success":False,"msg":"该子任务已经过期, 请拒绝掉过期任务!"})
+
     if ts.ticket.category == "install":
-        sid = request.form.get("sid", None)
-        ip = request.form.get("ip", None)
-        if not (sid and ip):
-            return jsonify({"success":False,"msg":u"没有分配的IP无法通过批准!"})
-        ext = {"install": {ip:str(sid)}, "crontime": int(ts.limit_at)-7200}
+        msg=api.host_scheduler(g, ts.ticket.app_id, ts)
+        if not msg:
+            return jsonify({"success":False,"msg":u"服务器库存不够了,无法通过审批,抓紧联系OPS!"})
+        if msg == 2333:
+            return jsonify({"success":False,"msg":u"尚未配置调度参数,请联系OPS配置!"})
+        p={}
+        for sid, ip in msg.items():
+            if ip in p:
+                p[ip] += ",%s" % sid
+            else:
+                p[ip] = str(sid)
+        ext = {"install": p}
     else:
         try:
             p = map(int, ts.target.split(","))
@@ -163,8 +314,8 @@ def ticket_sub_allow(tid, stid):
             if index == 0:
                 continue
             if v - sorted(p)[index-1] != 1:
-                return jsonify({"success":False,"msg":u"该请求数据非法~联系下管理员!"})
-        ext = {"merge_str": "%s-%s" % (min(p), max(p)), "crontime": ts.limit_at}
+                return jsonify({"success":False,"msg":u"该合服数据非法~联系下管理员!"})
+        ext = {"merge": "%s-%s" % (min(p), max(p)), "crontime": ts.limit_at}
     cmdid = api.cmdid(g, ts.ticket.app_id, ts.ticket.category)
     if not cmdid:
         return jsonify({"success":False,"msg":u"你没有批准此类工单的权限!"})
@@ -173,7 +324,10 @@ def ticket_sub_allow(tid, stid):
         ts.save()
         t = Ticket.query.filter_by(id=tid).first()
         if not t.ticketsub.filter_by(allow=None).first():
-            t.status = 2
+            t.status = 3
+            t.save()
+        else:
+            t.status = 4
             t.save()
         return jsonify({"success":True,"msg":u"操作成功","data":ts.to_dict()})
     return jsonify({"success":False,"msg":u"审核失败~联系下管理员!"})
@@ -228,4 +382,6 @@ def extra_distributionip(tid):
     msg = api.host_scheduler(g, gameid, t)
     if not msg:
         return jsonify({"success":False,"msg":u"调度失败,可用的服务器不足!"})
+    if msg == 2333:
+        return jsonify({"success":False,"msg":u"尚未配置调度参数,请联系OPS配置!"})
     return jsonify({"success":True,"msg":msg})

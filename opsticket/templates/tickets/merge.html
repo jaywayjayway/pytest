@@ -24,36 +24,60 @@
 
 
 <script>
+function isNull(s){
+    var i=0;
+    for(var t in s){
+        i++;
+        if(i==2){
+            return false;
+        }
+    }
+    if(i<2){
+        return true;
+    }else{
+        return false;
+    }
+}
 jQuery(document).ready(function($) {
     $("#limit").datetimepicker({
         format:'YYYY-MM-DD HH:mm',
     });
     var flag=true;
     var t;
-    var r='';
+    var r=[];
+    var index=0;
+    var zone='';
     var point=document.getElementById('modal_merge');
+
+    if(isNull(checked)){
+        point.innerHTML='<div class="panel panel-color panel-danger"><div class="panel-heading"><h3>请至少选择两个区服,进行合服申请!</h3></div></div>';
+        flag=false;
+        $("#submit_a").remove();
+    }
     for(var i in checked){
-        console.log(checked);
-        console.log(i);
-        console.log(checked[i]);
-        r += checked[i]+',';
-        var p=checked[i];
-        if(p.indexOf('-')>0){
-            p=p.split('-')[-1];
-        }
-        if(t==undefined){
-            t = parseInt(p)+1;
+        r.push(checked[i]);
+        if(index==0){
+            if(checked[i].split('-').length>1){
+                zone=checked[i].split('-')[1];
+            }else{
+                zone=checked[i];
+            }
+            index++;
             continue;
         }
-        if(t!=parseInt(i)){
+        if(parseInt(zone)+1 != parseInt(i)){
             point.innerHTML='<div class="panel panel-color panel-danger"><div class="panel-heading"><h3>选择了不连续的区服,无法进行合服申请!</h3></div></div>';
             flag=false;
             $("#submit_a").remove();
         }
-        t = parseInt(p)+1;
+        if(checked[i].split('-').length>1){
+            zone=checked[i].split('-')[1];
+        }else{
+            zone=checked[i];
+        }
     }
     if(flag){
-        $("#merge_range").val(r);
+        $("#merge_range").val(r.join(','));
     }
 });
 

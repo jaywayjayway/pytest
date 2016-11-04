@@ -4,7 +4,7 @@ import json
 from flask import flash, Blueprint, render_template, request, redirect, session
 from flask.ext.login import login_user, logout_user
 from opsticket.models import User
-from opsticket.libs import keystone
+from opsticket.libs import keystone, utils
 
 auth = Blueprint('auth', __name__)
 
@@ -15,7 +15,7 @@ def login():
         password = request.form.get("password", "")
         remember = request.form.get("password", "")
         user = User.query.filter_by(username=username).first()
-        if user and user.password == user.encryption(password):
+        if user and user.password == utils.encryption(password):
             session.permanent = True
             if remember == 'on':
                 login_user(user, remember=True)

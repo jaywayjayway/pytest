@@ -10,12 +10,15 @@ def http_get(url='', method='get', headers={}, data=None):
         data = json.dumps(data)
         method='post'
     req = urllib2.Request(url, data, headers=headers)
-    print "%s %s " % (method, url)
+    print "%s %s %s" % (method, url, data)
     req.get_method=lambda: method.upper()
     try:
         resp = urllib2.urlopen(req)
-        data = json.loads(resp.read())
+        data = resp.read()
+        print data
+        data = json.loads(data)
     except Exception,e:
+        print e
         return None
     return data
 
@@ -42,6 +45,9 @@ def plat_info(plat_id):
 def game_list(g):
     data = http_get('%s/api/platset?platid=%s' % (config.GAME_URL, g.plat_id))
     if data and data["success"]:
+        for i in data["msg"]:
+            i["appname"] = i["cnname"]
+            redis_store.set(config.GAME_INFO % i, json.dumps(i))
         return data["msg"]
     return []
 
@@ -63,7 +69,6 @@ def profile_game(g, gameid=None):
     return data
 
 def group_list(g, gameid):
-    print g.token
     data = http_get('%s/api/gamegroup?gameid=%s' % (config.GAME_URL, gameid), headers={"X-Auth-Token":g.token})
     if data and data["success"]:
         return data["msg"]
@@ -95,19 +100,21 @@ def cmdid(g ,gameid, category):
     return None
 
 def send_cmd(g, cmdid, ticket, ext=None):
-    data = {"gameid":gameid,"cmdid":cmdid, "platid":ticket.plat_id, \
-            "title": u"%s-%s-运营工单" % (ticket.appname, ticket.platname)}
+    data = {"gameid":ticket.app_id,"cmdid":cmdid, "platid":ticket.plat_id, \
+            "title": u"%s-%s-运营工单" % (ticket.appname, ticket.platname), "wechat_call":True}
     if ext and isinstance(ext, dict):
         data.update(ext)
-    print "post /game/opsmanage data=%s" % data
-    return True
-    #data = http_get('%s/game/opmanage' % config.GAME_URL, method='post', headers={"X-Auth-Token":g.token}, data=data)
+    data = http_get('%s/game/opmanage' % config.GAME_URL, method='post', headers={"X-Auth-Token":g.token}, data=data)
     if data and data["result"]["status"] == 5:
         return True
     return False
 
 def host_scheduler(g, gameid, ticket):
-    data = {"gameid":gameid,"platid":ticket.plat_id,"sids":[i.target for i in ticket.ticketsub.filter_by(allow=None).all()]}
+    if hasattr(ticket, 'ticketsub'):
+        data = {"gameid":gameid,"platid":ticket.plat_id,"sids":[i.target for i in ticket.ticketsub.filter_by(allow=None).all()]}
+    else:
+        data = {"gameid":gameid,"platid":ticket.ticket.plat_id,"sids":[ticket.target]}
+    print "Scheduler:",data
     game_setting = redis_store.get(config.GAME_SETTING % data)
     if game_setting:
         try:
@@ -115,12 +122,19 @@ def host_scheduler(g, gameid, ticket):
         except:
             return None
     else:
-        return None
+        return 2333
     data.update(_set)
     data = http_get('%s/api/scheduler' % config.GAME_URL, headers={"X-Auth-Token":g.token}, data=data)
     if data and data["success"]:
         return data["msg"]
     return None
 
+def setting_list():
+    data = []
+    for key in redis_store.keys(config.GAME_SETTING % {"gameid": "*"}):
+        p = json.loads(redis_store.get(key))
+        data.append(p)
+    return data
+
 if __name__ == '__main__':
-    print plat_list()
+    print setting_list()

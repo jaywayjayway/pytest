@@ -6,7 +6,7 @@ from flask.ext.login import login_required, current_user as g
 
 from opsticket import redis_store, config
 from opsticket.models import User, App
-from opsticket.libs import decorator, api
+from opsticket.libs import decorator, api, utils
 
 user = Blueprint('user', __name__)
 
@@ -16,7 +16,7 @@ user = Blueprint('user', __name__)
 def user_list(page, page_size):
     instance = User.query
     if g.role == 2:
-        pass
+        instance = instance.filter_by(role=1)
     elif g.role == 1:
         instance = instance.filter_by(plat_id=g.plat_id, role=0)
     else:
@@ -52,7 +52,7 @@ def user_create():
             user = User(account, username, email, password, role, platid, plat["platename"])
             user.save()
             for app in apps:
-                app_cache = redis_store.get(config.GAME_SETTING % {"gameid":app})
+                app_cache = redis_store.get(config.GAME_INFO % {"gameid":app})
                 if not app_cache:
                     continue
                 app_cache = json.loads(app_cache)
@@ -104,7 +104,7 @@ def user_update(uid):
         need_add = set(apps) - set(exists)
         need_del = set(exists) - set(apps)
         for add in need_add:
-            app_cache = redis_store.get(config.GAME_SETTING % {"gameid":add})
+            app_cache = redis_store.get(config.GAME_INFO % {"gameid":add})
             if not app_cache:
                 continue
             app_cache = json.loads(app_cache)
@@ -133,6 +133,22 @@ def user_update(uid):
             user=g, tu=tu,
             url=url_for('user.user_update', uid=uid))
 
+@user.route('/users/profile', methods=['GET', 'POST'])
+@login_required
+def user_profile():
+    if request.method == 'POST':
+        old_password = request.form.get("old_password", None)
+        new_password = request.form.get("new_password", None)
+        confirm_password = request.form.get("confirm_password", None)
+        if g.password == utils.encryption(old_password):
+            if new_password != confirm_password:
+                return jsonify({"success":False,"msg":u"两次输入的密码不一致!"})
+            g.password = utils.encryption(new_password)
+            g.save()
+            return jsonify({"success":True,"msg":u"个人配置成功!"})
+        return jsonify({"success":False,"msg":u"旧密码不正确!"})
+
+    return render_template('users/user_profile.html', subject=u"个人配置")
 
 @user.route('/users/<int:user_id>/delete', methods=['DELETE'])
 @login_required

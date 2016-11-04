@@ -1,6 +1,10 @@
 #coding:utf-8
+import time
 import json
+import uuid
+import random
 import datetime
+import hashlib
 
 class ComplexEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -10,3 +14,20 @@ class ComplexEncoder(json.JSONEncoder):
             return obj.strftime('%Y-%m-%d')
         else:    
             return json.JSONEncoder.default(self, obj)
+
+def get_uuid():
+    return "%s" % uuid.uuid1(node=random.randint(1, 999999999999))
+
+
+def now_unix():
+    return int(time.time())
+
+def tomrrow_work_unix():
+    limit_at = datetime.datetime.now().today() + datetime.timedelta(days=1)
+    #tomorrow = datetime.datetime.now().today() + datetime.timedelta(days=1)
+    #tomorrow_work = '%s 09:00:00' % tomorrow.strftime('%Y-%m-%d')
+    #limit_at = datetime.datetime.strptime(tomorrow_work, '%Y-%m-%d %H:%M:%S')
+    return int(time.mktime(limit_at.timetuple()))
+
+def encryption(string):
+    return hashlib.md5('YB$a,3'+string+'$$%@cds').hexdigest()
