@@ -47,6 +47,10 @@ class Statistic(object):
         self.install = 0
         self.merge = 0
         self.count = 0
+        self.install_accept = 0
+        self.merge_accept = 0
+        self.total_deny = 0
+        self.total_accept = 0
 
         self.init()
 
@@ -58,14 +62,26 @@ class Statistic(object):
             base = Ticket.query.filter_by(deleted=False, platname=g.platname)
         else:
             base = Ticket.query.filter_by(deleted=False, user_id=g.id)
+        self.total_deny = base.join(TicketSub).filter(TicketSub.allow==False).count()
+        self.total_accept = base.join(TicketSub).filter(TicketSub.allow==True).count()
+
         base = base.filter(Ticket.status!=2, Ticket.status!=3).all()
         for t in base:
-            self.count += 1
-            for i in t.ticketsub.filter(TicketSub.limit_at.between(*between)).all():
+            search = t.ticketsub.filter(TicketSub.limit_at.between(*between)).all()
+            accept = t.ticketsub.filter(TicketSub.updated_at.between(*utils.today_zone()), TicketSub.allow==True).all()
+            if search:
+                self.count += 1
+            for i in search:
                 if i.target == 'install' and i.allow is None:
                     self.install += 1
                 if i.target == 'merge' and i.allow is None:
                     self.merge += 1
+
+            for a in accept:
+                if i.target == 'install':
+                    self.install_accept += 1
+                if i.target == 'merge':
+                    self.merge_accept += 1
 
     def user_count(self):
         if g.role == 2:
@@ -83,4 +99,14 @@ class Statistic(object):
     def merge_job(self):
         return {"text":u"今日合服", "value": self.merge, "than":random.randint(2,90)}
 
+    def accept_install(self):
+        return {"text":u"今日已批准装服数", "value":self.install_accept, "than":random.randint(2, 10)}
 
+    def accept_merge(self):
+        return {"text":u"今日已批准合服数", "value":self.merge_accept, "than":random.randint(2, 10)}
+
+    def accept_total(self):
+        return {"text":u"已通过审批总数", "value":self.total_accept, "than":random.randint(2, 10)}
+
+    def deny_total(self):
+        return {"text":u"未通过审批总数", "value":self.total_deny, "than":random.randint(2, 10)}

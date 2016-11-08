@@ -98,6 +98,7 @@ class TicketSub(Model):
     allow = db.Column(db.Boolean)
     ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'))
     ticket = db.relationship('Ticket', backref=db.backref('ticketsub', lazy='dynamic'))
+    updated_at = db.Column(db.DateTime)
 
     __tablename__ = 'ticketsub'
 

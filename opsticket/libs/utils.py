@@ -19,6 +19,13 @@ class ComplexEncoder(json.JSONEncoder):
 def get_uuid():
     return "%s" % uuid.uuid1(node=random.randint(1, 999999999999))
 
+def NOW():
+    return datetime.datetime.now()
+
+def today_zone():
+    t = datetime.datetime.now().strftime('%Y-%m-%d')
+    return [datetime.datetime.strptime('%s 00:00:01' % t, '%Y-%m-%d %H:%M:%S'), \
+            datetime.datetime.strptime('%s 11:59:59' % t, '%Y-%m-%d %H:%M:%S')]
 
 def now_unix():
     return int(time.time())

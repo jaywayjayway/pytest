@@ -1,6 +1,7 @@
 #coding:utf-8
 import json
 
+from sqlalchemy.sql import or_
 from flask import (Blueprint, render_template, request, redirect,
                    url_for, abort, jsonify)
 from flask.ext.login import login_required
@@ -28,11 +29,11 @@ def ticket_list():
 @login_required
 def ticket_history():
     if g.role == 2: 
-        instance = Ticket.query.filter_by(deleted=True)
+        instance = Ticket.query.filter(or_(Ticket.deleted==True, Ticket.status==3))
     elif g.role == 1:
-        instance = Ticket.query.filter_by(platname=g.platname, deleted=True)
+        instance = Ticket.query.filter_by(platname=g.platname).filter(or_(Ticket.deleted==True, Ticket.status==3))
     else:
-        instance = Ticket.query.filter_by(user_id=g.id, deleted=True)
+        instance = Ticket.query.filter_by(user_id=g.id).filter(or_(Ticket.deleted==True, Ticket.status==3))
     tickets = instance.all()
     return render_template('tickets/tickets.html', tickets=tickets, user=g)
 
@@ -167,9 +168,11 @@ def ticket_sub_deny(tid, stid):
     ts.save()
     if not t.ticketsub.filter_by(allow=None).first():
         t.status = 2
+        t.updated_at = utils.NOW()
         t.save()
     else:
         t.status = 4
+        t.updated_at = utils.NOW()
         t.save()
     return jsonify({"success":True,"msg":u"操作成功","data":ts.to_dict(hiden=['created_at','updated_at'])})
 
@@ -236,9 +239,11 @@ def ticket_allow_all(tid):
             ts.save()
         if t.ticketsub.filter_by(allow=None).first():
             t.status = 4
+            t.updated_at = utils.NOW()
             t.save()
         else:
             t.status = 3
+            t.updated_at = utils.NOW()
             t.save()
         return jsonify({"success":True,"msg":u"操作成功","data":ts.to_dict()})
 
@@ -277,8 +282,10 @@ def ticket_confirm(uuid):
             ts.save()
         if t.ticketsub.filter_by(allow=None).first():
             t.status=4
+            t.updated_at = utils.NOW()
         else:
             t.status=3
+            t.updated_at = utils.NOW()
         t.save()
         return jsonify({"success":True,"msg":u"工单批准成功!"})
     return jsonify({"success":False,"msg":u"工单批准失败!"})
@@ -326,6 +333,7 @@ def ticket_sub_allow(tid, stid):
         if not t.ticketsub.filter_by(allow=None).first():
             t.status = 3
             t.save()
+            t.updated_at = utils.NOW()
         else:
             t.status = 4
             t.save()

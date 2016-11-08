@@ -33,4 +33,37 @@
         </div>
     </div>
 </div>
+<div class="row">
+    <div class="col-sm-6 col-lg-3">
+        <div class="widget-simple-chart text-right card-box">
+            <div class="circliful-chart" data-dimension="90" data-text="{{graph.accept_install().than}}%" data-width="5" data-fontsize="14" data-percent="49" data-fgcolor="#FFAA00" data-bgcolor="#ebeff2"></div>
+            <h3 class="text-inverse counter">{{graph.accept_install().value}}</h3>
+            <p class="text-muted text-nowrap">{{graph.accept_install().text}}</p>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+        <div class="widget-simple-chart text-right card-box">
+            <div class="circliful-chart" data-dimension="90" data-text="{{graph.accept_merge().than}}%" data-width="5" data-fontsize="14" data-percent="49" data-fgcolor="#7266BA" data-bgcolor="#ebeff2"></div>
+            <h3 class="text-inverse counter">{{graph.accept_merge().value}}</h3>
+            <p class="text-muted text-nowrap">{{graph.accept_merge().text}}</p>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+        <div class="widget-simple-chart text-right card-box">
+            <div class="circliful-chart" data-dimension="90" data-text="{{graph.accept_total().than}}%" data-width="5" data-fontsize="14" data-percent="49" data-fgcolor="#25D8F6" data-bgcolor="#ebeff2"></div>
+            <h3 class="text-inverse counter">{{graph.accept_total().value}}</h3>
+            <p class="text-muted text-nowrap">{{graph.accept_total().text}}</p>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+        <div class="widget-simple-chart text-right card-box">
+            <div class="circliful-chart" data-dimension="90" data-text="{{graph.deny_total().than}}%" data-width="5" data-fontsize="14" data-percent="49" data-fgcolor="#ED3C39" data-bgcolor="#ebeff2"></div>
+            <h3 class="text-inverse counter">{{graph.deny_total().value}}</h3>
+            <p class="text-muted text-nowrap">{{graph.deny_total().text}}</p>
+        </div>
+    </div>
+</div>
 {% endblock %}
