@@ -77,7 +77,7 @@ def group_list(g, gameid):
 def zone_list(g, gameid):
     data = http_get('%s/api/zones?gameid=%s&platid=%s' % (config.GAME_URL, gameid, g.plat_id))
     if data and data["success"]:
-        return data["msg"]
+        return [i for i in data["msg"] if i["sid"] < 9900]
     return []
 
 def zone_limit(g, gameid):

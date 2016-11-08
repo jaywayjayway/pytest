@@ -58,10 +58,10 @@ class Statistic(object):
             base = Ticket.query.filter_by(deleted=False, platname=g.platname)
         else:
             base = Ticket.query.filter_by(deleted=False, user_id=g.id)
-        base = base.filter(Ticket.status==1, Ticket.status==4).all()
+        base = base.filter(Ticket.status!=2, Ticket.status!=3).all()
         for t in base:
             self.count += 1
-            for i in t.filter(TicketSub.limit_at.between(*between)).all():
+            for i in t.ticketsub.filter(TicketSub.limit_at.between(*between)).all():
                 if i.target == 'install' and i.allow is None:
                     self.install += 1
                 if i.target == 'merge' and i.allow is None:

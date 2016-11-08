@@ -11,9 +11,8 @@ from opsticket.libs import decorator, api, utils
 user = Blueprint('user', __name__)
 
 @user.route('/users', methods=['GET'])
-@decorator.pageination
 @login_required
-def user_list(page, page_size):
+def user_list():
     instance = User.query
     if g.role == 2:
         instance = instance.filter_by(role=1)
@@ -22,7 +21,7 @@ def user_list(page, page_size):
     else:
         abort(404)
     count = instance.count()
-    users = instance.limit(page_size).offset(page*page_size).all()
+    users = instance.all()
     return render_template('users/users.html', count=count, data=users)
 
 @user.route('/users/create', methods=['GET', 'POST'])
@@ -33,6 +32,8 @@ def user_create():
         username = request.form.get("username", None)
         email = request.form.get("email", None)
         password = request.form.get("password", None)
+        if not utils.complexity_check(password):
+            return jsonify({"success":False, "msg":u"密码长度至少8位以上,并包含大小写字母及数字!"})
         if g.role == 2:
             platid = request.form.get("platid", None)
         else:
@@ -63,10 +64,8 @@ def user_create():
         return jsonify({"success":True, "msg":u"添加用户成功"})
 
     plats = api.plat_list()
-    games = []
     tu = None
-    if g.role == 1:
-        games = api.game_list(g)
+    games = api.setting_list()
     return render_template('users/user_form.html', 
             plats=plats,
             games=games,
@@ -118,14 +117,12 @@ def user_update(uid):
 
 
     plats = api.plat_list()
-    games = []
     tu = None
     if g.role == 1:
         tu = User.query.filter_by(id=uid, plat_id=g.plat_id).first()
-        games = api.game_list(g)
     elif g.role == 2:
         tu = User.query.filter_by(id=uid).first()
-    games.append({"gameid":38,"cnname":u"幻神天下","enname":"hstx"})
+    games = api.setting_list()
     return render_template('users/user_form.html', 
             plats=plats,
             games=games,
@@ -140,6 +137,8 @@ def user_profile():
         old_password = request.form.get("old_password", None)
         new_password = request.form.get("new_password", None)
         confirm_password = request.form.get("confirm_password", None)
+        if not utils.complexity_check(new_password):
+            return jsonify({"success":False, "msg":u"密码长度至少8位以上,并包含大小写字母及数字!"})
         if g.password == utils.encryption(old_password):
             if new_password != confirm_password:
                 return jsonify({"success":False,"msg":u"两次输入的密码不一致!"})

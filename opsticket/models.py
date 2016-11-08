@@ -100,3 +100,8 @@ class TicketSub(Model):
     ticket = db.relationship('Ticket', backref=db.backref('ticketsub', lazy='dynamic'))
 
     __tablename__ = 'ticketsub'
+
+try:
+    db.create_all()
+except:
+    pass

@@ -13,7 +13,7 @@ def login():
     if request.method == 'POST':
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        remember = request.form.get("password", "")
+        remember = request.form.get("remember", "")
         user = User.query.filter_by(username=username).first()
         if user and user.password == utils.encryption(password):
             session.permanent = True

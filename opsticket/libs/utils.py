@@ -1,4 +1,5 @@
 #coding:utf-8
+import re
 import time
 import json
 import uuid
@@ -31,3 +32,9 @@ def tomrrow_work_unix():
 
 def encryption(string):
     return hashlib.md5('YB$a,3'+string+'$$%@cds').hexdigest()
+
+def complexity_check(string):
+    if len(string) < 8:
+        return None
+    p=re.compile(r'[A-Z][0-9a-zA-Z]+$')
+    return p.search(string)

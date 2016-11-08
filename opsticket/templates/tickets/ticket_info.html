@@ -5,6 +5,8 @@
 <div class="modal-body">
     <table class="table table-bordered m-0" id="tinfo">
         <thead>
+            <th>业务名</th>
+            <th>平台名</th>
             <th>区服ID</th>
             <th>类型</th>
             <th>截至时间</th>
@@ -14,6 +16,8 @@
         <tbody>
         {% for s in ts %}
             <tr>
+                <td>{{t.appname}}</td>
+                <td>{{t.platname}}</td>
                 <td>{{s.target}}</td>
                 {% if s.ticket.category == "install" %}
                 <td>装服</td>
