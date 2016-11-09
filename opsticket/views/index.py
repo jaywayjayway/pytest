@@ -58,12 +58,15 @@ class Statistic(object):
         between = [utils.now_unix(), utils.tomrrow_work_unix()]
         if g.role == 2:
             base = Ticket.query.filter_by(deleted=False)
+            total = Ticket.query
         elif g.role == 1:
             base = Ticket.query.filter_by(deleted=False, platname=g.platname)
+            total = Ticket.query.filter_by(platname=g.platname)
         else:
             base = Ticket.query.filter_by(deleted=False, user_id=g.id)
-        self.total_deny = base.join(TicketSub).filter(TicketSub.allow==False).count()
-        self.total_accept = base.join(TicketSub).filter(TicketSub.allow==True).count()
+            total = Ticket.query.filter_by(user_id=g.id)
+        self.total_deny = total.join(TicketSub).filter(TicketSub.allow==False).count()
+        self.total_accept = total.join(TicketSub).filter(TicketSub.allow==True).count()
 
         base = base.filter(Ticket.status!=2, Ticket.status!=3).all()
         for t in base:
@@ -71,16 +74,18 @@ class Statistic(object):
             accept = t.ticketsub.filter(TicketSub.updated_at.between(*utils.today_zone()), TicketSub.allow==True).all()
             if search:
                 self.count += 1
+            print search
             for i in search:
-                if i.target == 'install' and i.allow is None:
+                print i.target
+                if i.ticket.category == 'install' and i.allow is None:
                     self.install += 1
-                if i.target == 'merge' and i.allow is None:
+                if i.ticket.category == 'merge' and i.allow is None:
                     self.merge += 1
 
             for a in accept:
-                if i.target == 'install':
+                if i.ticket.category == 'install':
                     self.install_accept += 1
-                if i.target == 'merge':
+                if i.ticket.category == 'merge':
                     self.merge_accept += 1
 
     def user_count(self):
