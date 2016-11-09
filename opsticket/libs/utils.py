@@ -43,5 +43,10 @@ def encryption(string):
 def complexity_check(string):
     if len(string) < 8:
         return None
-    p=re.compile(r'[A-Z][0-9a-zA-Z]+$')
-    return p.search(string)
+    if not re.search(r'[A-Z]', string):
+        return None
+    if not re.search(r'[a-z]', string):
+        return None
+    if not re.search(r'[0-9]', string):
+        return None
+    return True
