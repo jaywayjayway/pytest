@@ -13,6 +13,34 @@ from opsticket.libs import decorator, api, utils
 
 ticket = Blueprint('ticket', __name__)
 
+
+def get_locks():
+    locks = redis_store.get(config.SCHEDULER_LOCK)
+    if locks:
+        try:
+            locks = json.loads(locks)
+        except:
+            locks = []
+    else:
+        locks = []
+    return locks
+
+def update_locks(lock):
+    locks = get_locks()
+    locks += lock
+    redis_store.set(config.SCHEDULER_LOCK, json.dumps(locks))
+
+def release_lock(lock):
+    locks = get_locks()
+    try:
+        if isinstance(locks, list):
+            locks = list(set(locks) - set(lock))
+        else:
+            locks.remove(lock)
+        redis_store.set(config.SCHEDULER_LOCK, json.dumps(locks))
+    except:
+        pass
+
 @ticket.route('/tickets', methods=['GET'])
 @login_required
 def ticket_list():
@@ -234,6 +262,9 @@ def ticket_allow_all(tid):
         ext = {"merge": "%s-%s" % (min(sids), max(sids)), "crontime": ts.limit_at}
 
     if api.send_cmd(g, cmd, t, ext):
+        # 将这些IP暂时锁定
+        if t.category == 'install':
+            update_locks(p.keys())
         for ts in t.ticketsub.all():
             ts.allow = True
             ts.save()
@@ -276,6 +307,7 @@ def ticket_confirm(uuid):
             p[ip] = str(sid)
     ext = {"install": p}
     if api.send_cmd(g, cmd, t, ext):
+        update_locks(p.keys())
         redis_store.delete(config.SCHEDULER_ID % locals())
         for ts in t.ticketsub.filter(TicketSub.target.in_(list(msg))).all():
             ts.allow=True
@@ -327,6 +359,8 @@ def ticket_sub_allow(tid, stid):
     if not cmdid:
         return jsonify({"success":False,"msg":u"你没有批准此类工单的权限!"})
     if api.send_cmd(g, cmdid, ts.ticket, ext):
+        if ts.ticket.category == "install":
+            update_locks(p.keys())
         ts.allow = True
         ts.save()
         t = Ticket.query.filter_by(id=tid).first()
@@ -393,3 +427,11 @@ def extra_distributionip(tid):
     if msg == 2333:
         return jsonify({"success":False,"msg":u"尚未配置调度参数,请联系OPS配置!"})
     return jsonify({"success":True,"msg":msg})
+
+@ticket.route('/extra/release/hook', methods=['GET'])
+def extra_release_hook():
+    lock = request.args.getlist('release', None)
+    if lock:
+        release_lock(lock)
+        return jsonify({"success":True,"msg":""})
+    return jsonify({"success":False,"msg":"非法请求!"})

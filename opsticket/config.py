@@ -21,3 +21,6 @@ GAME_MAXZONE='GAME:MAX_ZONE:%(gameid)s:%(platid)s'
 CMD_KEY='CMD:%(category)s:%(gameid)s'
 
 SCHEDULER_ID='scheduler_%(uuid)s'
+
+HOOK='http://'
+SCHEDULER_LOCK='LOCK:SCHEDULER'
