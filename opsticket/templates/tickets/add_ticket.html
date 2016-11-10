@@ -6,15 +6,9 @@
                     <div class="col-sm-2">
                         <select id="app" name="app_id" class="form-control select2">
                             <option value="">--- 选择游戏 ---</option>
-                            {% if user.role >= 1%}
                             {% for game in games %}
-                            <option value={{game.gameid}}>{{game.cnname}}</option>
-                            {% endfor %}
-                            {% else %}
-                            {% for game in user.app.all() %}
                             <option value={{game.app_id}}>{{game.appname}}</option>
                             {% endfor %}
-                            {% endif %}
                         </select>
                     </div>
                     <button id='install' disabled data-toggle="modal" data-target="#form-modal" class="btn btn-primary waves-effect waves-light w-xs m-b-5" onclick="ajax_replace('/install/request', 'replace_modal')">申请装服</button>
@@ -85,6 +79,5 @@ function checkzone(e){
         c.addClass("zone-selected");
         checked[e.target.id] = e.target.innerText;
     };
-    console.log(checked);
 }
 </script>

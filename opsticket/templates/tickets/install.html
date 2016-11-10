@@ -21,6 +21,7 @@
                 </div>
             </div>
         </div>
+        确认表格:
         <div class="card-box inbox-widget nicescroll" style="overflow:hidden;max-height:211px" id="sids">
         </div>
     </div>
@@ -67,6 +68,14 @@ function add(){
 }
 
 function submit_ticket(url){
+    if(!installs){
+        alert("请点击加号来保存你装服信息到确认表格中! 然后在点击提交");
+        return
+    }
+    if($("#limit").val()){
+        alert("检测到你有填写的装服信息, 但未添加到确认表格中! 请点击加号后在点提交");
+        return
+    }
     var data={
         "app_id": $("#app").val(), 
         "appname": $("#app").find("option:selected").text(),

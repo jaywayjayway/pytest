@@ -47,7 +47,7 @@
             <div class="col-md-10">
                 <select name="apps" class="multi-select" required multiple="" id="my_multi_select3" >
                     {% for game in games %}
-                    <option value={{game.gameid}}>{{game.cnname}}</option>
+                    <option value={{game.app_id}}>{{game.appname}}</option>
                     {% endfor %}
                 </select>
             </div>

@@ -5,9 +5,10 @@
 <div class="modal-body">
     <table class="table table-bordered m-0" id="tinfo">
         <thead>
+            <th>业务名</th>
+            <th>平台名</th>
             <th>区服ID</th>
             <th>类型</th>
-            {% if t.category == "install" %}<th>分配IP</th>{% endif %}
             <th>截至时间</th>
             <th>状态</th>
             <th>操作</th>
@@ -15,13 +16,14 @@
         <tbody>
         {% for s in ts %}
             <tr>
+                <td>{{t.appname}}</td>
+                <td>{{t.platname}}</td>
                 <td>{{s.target}}</td>
                 {% if s.ticket.category == "install" %}
                 <td>装服</td>
                 {% else %}
                 <td>合服</td>
                 {% endif %}
-                {% if t.category == "install" %}<td></td>{% endif %}
                 <td>{{s.limit_at | unix_to_datetime}}</td>
                 <td>
                     {% if s.allow %}
@@ -34,7 +36,7 @@
                 </td>
                 <td>
                     {% if user.role == 2 %}
-                        {% if s.allow == None %}
+                        {% if s.allow == None and not t.deleted %}
                         <a onclick='verify_submit("{{url_for('ticket.ticket_sub_deny', tid=tid, stid=s.id)}}", this)'>驳回</a>
                         <a onclick='verify_submit("{{url_for('ticket.ticket_sub_allow', tid=tid, stid=s.id)}}", this)'>批准</a>
                         {% endif %}
@@ -46,16 +48,8 @@
     </table>
 </div>
 <div class="modal-footer">
-    {% if t.category == "install" and user.role == 2 %}
-    <div class="col-md-6">
-        <select class="form-control select2" required name="groupid">
-            <option value="">---- 请选择组进行分配IP ----</option>
-            {% for group in groups %}
-            <option value={{group.id}}>{{group.name}}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <a class="btn btn-purple btn-custom waves-effect w-md waves-light m-b-5" onclick="distributionIP('/extra/{{tid}}/distributionip')">请求分配IP</a>
+    {% if t.category == "install" and user.role == 2 and not t.deleted %}
+    <a class="btn btn-purple btn-custom waves-effect w-md waves-light m-b-5" onclick="AcceptAll('/ticket/accept/{{tid}}/all')">批准</a>
     {% endif %}
 </div>
 
@@ -85,26 +79,30 @@ function verify_submit(url, row){
         }
     });
 }
-function distributionIP(url){
-    var data={"gameid":{{t.app_id}}};
+var IpMap;
+
+function AcceptAll(url){
     $.ajax({
         url:url,
-        type:'POST',
-        data:data,
+        type:"POST",
         success:function(data){
             if(!data.success){
-                $.Notification.notify('warning','bottom right','警告', data.msg);
-                return;
-            }
-            var table=document.getElementById("tinfo");
-            var tds=table.getElementsByTagName("td");
-            for(var i=0; i<tds.length; i++){
-                var tmp=tds[i].innerHTML;
-                if(data.msg[tmp]){
-                    tds[i+=2].innerHTML = data.msg[tmp];
+                if(!data.callback){
+                    $.Notification.notify('warning','bottom right','警告', data.msg);
+                    return
+                }else{
+                    IpMap=data.msg;
+                    ajax_replace(data.callback, 'replace_modal');
                 }
+            }else{
+                $('#form-modal').modal('hide');
+                broadcast(data);
             }
+        },
+        complete:function(){
+            ajax_replace('/tickets', 'replace_body');
         }
-    });
+    })
+　  $(".modal-backdrop").remove();
 }
 </script>

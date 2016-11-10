@@ -1,9 +1,9 @@
 #coding:utf-8
-import hashlib
 import datetime
 from flask.ext.login import UserMixin
 
 from opsticket import db
+from opsticket.libs import utils
 
 
 class Model(db.Model):
@@ -52,14 +52,15 @@ class User(Model, UserMixin):
     def user_id(self):
         return self.id
 
-    def encryption(self, string):
-        return hashlib.md5('YB$a,3'+string+'$$%@cds').hexdigest()
+    @property
+    def isadmin(self):
+        return False
 
     def __init__(self, account, username, email, password, role, platid, platname): 
         self.account = account
         self.username = username
         self.email = email
-        self.password = self.encryption(password)
+        self.password = utils.encryption(password)
         self.role = role
         self.plat_id = platid
         self.platname = platname
@@ -80,7 +81,7 @@ class Ticket(Model):
     appname = db.Column(db.String(100))
     platname = db.Column(db.String(100))
     plat_id = db.Column(db.Integer)
-    status = db.Column(db.Integer, default=1)  # 1:未处理  2:未通过  3:已处理  
+    status = db.Column(db.Integer, default=1)  # 1:未处理  2:未通过  3:已处理  4:部分处理  5:过期未处理
     category = db.Column(db.String(100)) # install  merge
     username = db.Column(db.String(100))
     user_id = db.Column(db.Integer)
@@ -97,5 +98,11 @@ class TicketSub(Model):
     allow = db.Column(db.Boolean)
     ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'))
     ticket = db.relationship('Ticket', backref=db.backref('ticketsub', lazy='dynamic'))
+    updated_at = db.Column(db.DateTime)
 
     __tablename__ = 'ticketsub'
+
+try:
+    db.create_all()
+except:
+    pass

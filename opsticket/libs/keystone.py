@@ -7,7 +7,8 @@ from opsticket import config
 from opsticket import redis_store
 
 class KeystoneUser(object):
-    def __init__(self, user_info):
+    def __init__(self, user_info, isadmin):
+        self.isadmin = isadmin
         self.user_info = user_info
         self.username = user_info["access"]["user"]["username"]
         self.user_id = user_info["access"]["user"]["id"]
@@ -37,6 +38,16 @@ class KeystoneUser(object):
     def expires(self):
         return token_timeout(self.user_info)
 
+def is_admin(token):
+    req = urllib2.Request(config.Keystone_url + "/users")
+    req.add_header("X-Auth-Token", token)
+    try:
+        ret = urllib2.urlopen(req).read()
+        ui = json.loads(ret)
+    except:
+        return False
+    return ui["isadmin"]
+
 def authentication(username, password):
     headers = {'Content-type': 'application/json'}
     data = {
@@ -55,7 +66,7 @@ def authentication(username, password):
         print e
         return None
     token_info = json.loads(resp.read())
-    user = KeystoneUser(token_info)
+    user = KeystoneUser(token_info, is_admin(token_info["access"]["token"]["id"]))
     redis_store.set(config.USER_KEY % {"user_id":user.user_id}, pickle.dumps({"user":user}), ex=user.expires)
     return user
 
