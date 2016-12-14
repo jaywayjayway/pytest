@@ -100,7 +100,7 @@ def cmdid(g ,gameid, category):
     return None
 
 def send_cmd(g, cmdid, ticket, ext=None):
-    data = {"gameid":ticket.app_id,"cmdid":cmdid, "platid":ticket.plat_id, "hook":config.HOOK, \
+    data = {"gameid":ticket.app_id,"cmdid":cmdid, "platid":ticket.plat_id, \
             "title": u"%s-%s-运营工单" % (ticket.appname, ticket.platname), "wechat_call":True}
     if ext and isinstance(ext, dict):
         data.update(ext)
@@ -123,15 +123,15 @@ def host_scheduler(g, gameid, ticket):
             return None
     else:
         return 2333
-    lock = redis_store.get(config.SCHEDULER_LOCK)
-    if lock:
-        try:
-            lock = json.loads(lock)
-        except:
-            lock = []
-        if lock:
-            print "Current Time should ignore hosts %s" % lock
-            data.update({"ignore_hosts": ",".join(lock)})
+    #lock = redis_store.get(config.SCHEDULER_LOCK)
+    #if lock:
+    #    try:
+    #        lock = json.loads(lock)
+    #    except:
+    #        lock = []
+    #    if lock:
+    #        print "Current Time should ignore hosts %s" % lock
+    #        data.update({"ignore_hosts": ",".join(lock)})
     data.update(_set)
     data = http_get('%s/api/scheduler' % config.GAME_URL, headers={"X-Auth-Token":g.token}, data=data)
     if data and data["success"]:

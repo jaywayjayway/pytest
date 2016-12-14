@@ -23,21 +23,21 @@ def get_locks():
             locks = []
     else:
         locks = []
-    return locks
+    return set(locks)
 
 def update_locks(lock):
     locks = get_locks()
-    locks += lock
-    redis_store.set(config.SCHEDULER_LOCK, json.dumps(locks))
+    locks = locks | set(lock)
+    redis_store.set(config.SCHEDULER_LOCK, json.dumps(list(locks)))
 
 def release_lock(lock):
     locks = get_locks()
     try:
         if isinstance(locks, list):
-            locks = list(set(locks) - set(lock))
+            locks = list(locks - set(lock))
         else:
             locks.remove(lock)
-        redis_store.set(config.SCHEDULER_LOCK, json.dumps(locks))
+        redis_store.set(config.SCHEDULER_LOCK, json.dumps(list(locks)))
     except:
         pass
 
@@ -263,8 +263,8 @@ def ticket_allow_all(tid):
 
     if api.send_cmd(g, cmd, t, ext):
         # 将这些IP暂时锁定
-        if t.category == 'install':
-            update_locks(p.keys())
+        #if t.category == 'install':
+            #update_locks(p.keys())
         for ts in t.ticketsub.all():
             ts.allow = True
             ts.save()
@@ -307,7 +307,7 @@ def ticket_confirm(uuid):
             p[ip] = str(sid)
     ext = {"install": p}
     if api.send_cmd(g, cmd, t, ext):
-        update_locks(p.keys())
+        #update_locks(p.keys())
         redis_store.delete(config.SCHEDULER_ID % locals())
         for ts in t.ticketsub.filter(TicketSub.target.in_(list(msg))).all():
             ts.allow=True
@@ -359,8 +359,8 @@ def ticket_sub_allow(tid, stid):
     if not cmdid:
         return jsonify({"success":False,"msg":u"你没有批准此类工单的权限!"})
     if api.send_cmd(g, cmdid, ts.ticket, ext):
-        if ts.ticket.category == "install":
-            update_locks(p.keys())
+        #if ts.ticket.category == "install":
+        #    update_locks(p.keys())
         ts.allow = True
         ts.save()
         t = Ticket.query.filter_by(id=tid).first()
