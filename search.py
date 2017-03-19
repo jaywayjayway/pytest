@@ -1,5 +1,7 @@
 #coding:utf-8
 
+import random
+
 
 ## 二分搜索 ##
 def bin_search(arr,data,low,high):
@@ -16,7 +18,7 @@ def bin_search(arr,data,low,high):
     else:
         return "found %d, index is %d" %(data,middle)
 
-
-
-
 if __name__ == '__main__':
+
+    a = random.sample(range(1,100),10)
+    bin_search(a,10,0,len(a))
