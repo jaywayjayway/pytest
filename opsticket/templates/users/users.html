@@ -1,0 +1,48 @@
+<div class="card-box">
+    <div class="m-t-0 header-title">
+        <button class="btn btn-primary waves-effect waves-light w-xs m-b-5" data-toggle="modal" onclick="ajax_replace('/users/create', 'replace_modal')" data-target="#form-modal">添加用户</button>
+    </div>
+    <table class="tablesaw table m-b-0 tablesaw-swipe tablesaw-sortable" id="data-table" style="">
+        <thead>
+            <tr>
+                <th>用户名</button></th>
+                <th class="tablesaw-sortable-head"><button class="tablesaw-sortable-btn">邮箱</button></th>
+                <th class="tablesaw-sortable-head"><button class="tablesaw-sortable-btn">所属平台</button></th>
+                <th class="tablesaw-sortable-head"><button class="tablesaw-sortable-btn">创建时间</button></th>
+                <th class="tablesaw-sortable-head"><button class="tablesaw-sortable-btn">操作</button></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in data %}
+            <tr>
+                <td>{{user.username}}</td>
+                <td>{{user.email}}</td>
+                <td>{{user.platname}}</td>
+                <td>{{user.create_at|datetime}}</td>
+                <td>
+                    <a class="btn btn-icon waves-effect waves-light btn-info m-b-5" data-toggle="modal" data-target="#form-modal" onclick="ajax_replace('/users/{{user.id}}/update', 'replace_modal')">更新</a>
+                    <a class="btn btn-icon waves-effect btn-default m-b-5" onclick='confirm_delete("{{url_for('user.user_delete', user_id=user.id)}}", this)'>删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <!--
+    <div class="m-b-0">
+        <div class="dataTables_paginate paging_simple_numbers" id="datatable-responsive_paginate">
+            <ul class="pagination">
+                <li class="paginate_button previous disabled" aria-controls="datatable-responsive" tabindex="0" id="datatable-responsive_previous"><a href="#">Previous</a></li>
+                <li class="paginate_button active" aria-controls="datatable-responsive" tabindex="0"><a href="#">1</a></li>
+                <li class="paginate_button " aria-controls="datatable-responsive" tabindex="0"><a href="#">2</a></li>
+                <li class="paginate_button next" aria-controls="datatable-responsive" tabindex="0" id="datatable-responsive_next"><a href="#">Next</a></li>
+            </ul>
+        </div>
+    </div>
+    -->
+</div>
+<div class="row">
+    <div class="col-sm-6">
+    </div>
+</div>
+
+{% include "common/modal.html" %}

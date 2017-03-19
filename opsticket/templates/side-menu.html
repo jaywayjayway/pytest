@@ -1,0 +1,112 @@
+<div class="left side-menu">
+    <div class="slimScrollDiv" style="position: relative; overflow: hidden; width: auto; height: 400px;"><div class="sidebar-inner slimscrollleft" style="overflow: hidden; width: auto; height: 400px;">
+
+        <div id="sidebar-menu">
+            <ul>
+                <li class="text-muted menu-title">Main</li>
+                <li>
+                    <a class="waves-effect waves-primary subdrop" href="/"><i class="md md-dashboard"></i><span> 概览 </span></a>
+                </li>
+                {% for menu in menus %}
+                <li>
+                    <a class="waves-effect waves-primary" onclick='{{menu.url}}'><i class='{{menu.icon}}'></i><span> {{menu.name}} </span></a>
+                </li>
+                {% endfor %}
+
+                {% if help_menus %}
+                <li class="text-muted menu-title">用户</li>
+                {% for help_menu in help_menus %}
+                <li>
+                    <a class="waves-effect waves-primary" onclick='{{help_menu.url}}'><i class='{{help_menu.icon}}'></i><span> {{help_menu.name}} </span></a>
+                </li>
+                {% endfor %}
+                {% endif %}
+
+            </ul>
+            <div class="clearfix"></div>
+        </div>
+
+        <div class="clearfix"></div>
+    </div><div class="slimScrollBar" style="background: rgb(220, 220, 220) none repeat scroll 0% 0%; width: 5px; position: absolute; top: 0px; opacity: 0.4; display: none; border-radius: 7px; z-index: 99; right: 1px; height: 237.741px; visibility: visible;"></div><div class="slimScrollRail" style="width: 5px; height: 100%; position: absolute; top: 0px; display: none; border-radius: 7px; background: rgb(51, 51, 51) none repeat scroll 0% 0%; opacity: 0.2; z-index: 90; right: 1px;"></div></div>
+
+    <div class="user-detail">
+        <div class="dropup">
+            <a aria-expanded="false" data-toggle="dropdown" class="dropdown-toggle profile" href="">
+                <img class="img-circle" alt="user-img" src="static/images/users/avatar-2.jpg">
+                <span class="user-info-span">
+                    <h5 class="m-t-0 m-b-0">{{ user.username }}</h5>
+                    <p class="text-muted m-b-0">
+                        <small><i class="fa fa-circle text-success"></i> <span>Online</span></small>
+                    </p>
+                </span>
+            </a>
+            <ul class="dropdown-menu">
+                {% if user.role != 2 %}
+                <li><a href='javascript:showProfile()'><i class="md md-face-unlock"></i> 个人配置</a></li>
+                {% endif %}
+                <li><a href='{{url_for("auth.logout")}}'><i class="md md-settings-power"></i> 登出</a></li>
+            </ul>
+
+        </div>
+    </div>
+</div>
+
+<div id="profile-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                <h4 class="modal-title">个人配置</h4>
+            </div>
+            <form role="form" class="form-horizontal" id="user_profile">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="col-md-2 control-label">旧密码</label>
+                        <div class="col-md-10">
+                            <input type="password" required name="old_password"  class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-2 control-label">新密码</label>
+                        <div class="col-md-10">
+                            <input type="password" required name="new_password" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-2 control-label">确认密码</label>
+                        <div class="col-md-10">
+                            <input type="password" required name="confirm_password" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a class="btn btn-primary waves-effect waves-light" type="submit" onclick='submit_user_profile()'>提交</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showProfile(){
+    $("#profile-modal").modal('show');
+}
+function submit_user_profile(){
+    if(!document.forms["user_profile"].checkValidity()){
+        return false;
+    }
+    $.ajax({
+        url:"{{url_for('user.user_profile')}}",
+        type:'POST',
+        data:$("#user_profile").serialize(),
+        success:function(data){
+            $("#profile-modal").modal('hide');
+            broadcast(data);
+        },
+        error:function(data){
+            $.Notification.notify('error','bottom right','啊啊啊啊啊啊', '网络有点问题了 >.<');
+        }
+    })
+    $('#user_profile')[0].reset()
+}
+</script>
