@@ -10,6 +10,7 @@ DestBaseDir="/data/logs/cutlog/"
 LogDir=["/data/logs/weblog/","/tmp/weblog/"]
 
 
+
 class CutLog():
     def __init__(self,pattern):
         self.s = pattern
