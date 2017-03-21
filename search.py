@@ -20,5 +20,7 @@ def bin_search(arr,data,low,high):
 
 if __name__ == '__main__':
 
-    a = random.sample(range(1,100),10)
-    bin_search(a,10,0,len(a))
+    a = random.sample(range(1,100),30)
+    print "gen the arr:",a
+    print "search data: ",10
+    print "result:  ",bin_search(a,10,0,len(a))
