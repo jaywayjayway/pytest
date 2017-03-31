@@ -6,8 +6,12 @@
           <option name="url" value="https://github.com/open-falcon/dashboard/tree/plus-dev" />
           <option name="userName" value="" />
         </UrlAndUserName>
+        <UrlAndUserName>
+          <option name="url" value="https://github.com/open-falcon/dashboard.git" />
+          <option name="userName" value="" />
+        </UrlAndUserName>
       </list>
     </option>
-    <option name="cloneParentDir" value="$USER_HOME$/PycharmProjects/virtualenv/flask" />
+    <option name="cloneParentDir" value="$USER_HOME$/PycharmProjects/virtualenv/flask/dashboard" />
   </component>
 </application>
