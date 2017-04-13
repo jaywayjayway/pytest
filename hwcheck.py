@@ -1,0 +1,595 @@
+#!/usr/bin/env python
+"""A wrapper script with srvadmin and other tools for hardware monitor.
+
+Supported metrics:
+    cpu memory raidcard pdisk vdisk raidcard_bat
+    bios cmos_bat fan power board_temp cpu_temp
+
+"""
+
+import subprocess
+import json
+import time
+import socket
+import urllib2
+from optparse import OptionParser
+
+host = socket.gethostname()
+messages = []
+verbs = []
+
+def addverb(metric, model, index, status, info):
+    m = {}
+    m['metric'] = metric
+    m['model'] = model
+    m['index'] = index
+    m['status'] = status
+    m['info'] = info
+    verbs.append(m)
+
+def addmsg(metric, value):
+    m = {}
+    m['metric'] = 'hw.%s' % metric
+    m['endpoint'] = host
+    m['tags'] = ''
+    m['value'] = value
+    m['timestamp'] = int(time.time())
+    m['step'] = int(step)
+    m['counterType'] = 'GAUGE'
+    messages.append(m)
+
+def map_value(state):
+    statemap = {0:['crit', 'critical'],
+                1:['warn', 'warning', 'non-critical'],
+                2:['ok', 'ready']
+                }
+    for i in statemap:
+        if state.lower() in statemap[i]:
+            return i
+
+def execute(cmd):
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+    return p.communicate()
+
+
+# cpu
+def check_cpu():
+    cmd = 'omreport chassis processors -fmt ssv'
+    stdout, stderr = execute(cmd)
+    cpus = [cpu for cpu in stdout.splitlines() if 'CPU' in cpu]
+    value = 2
+    for line in cpus:
+        i = line.split(';')
+        Index = i[0].strip().lower()
+        Status = i[1].strip().lower()
+        Connector_Name = i[2].strip().lower()
+        Processor_Brand = i[3].strip().lower()
+        Processor_Version = i[4].strip().lower()
+        Current_Speed = i[5].strip().lower()
+        State = i[6].strip().lower()
+        Core_Count = i[7].strip().lower()
+        model = Processor_Brand.split()[3]
+        v = map_value(Status)
+        if v < value:
+            value = v
+        addverb('cpu', model, Connector_Name, Status, State)
+
+    addmsg('cpu', value)
+
+
+# memory
+def check_memory():
+    cmd = 'omreport chassis memory -fmt ssv'
+    stdout, stderr = execute(cmd)
+    mems = [mem for mem in stdout.splitlines() if 'DIMM' in mem]
+    value = 2
+    for line in mems:
+        i = line.split(';')
+        # TODO make sure index here is uniq
+        Index = i[0].strip()
+        Status = i[1].strip().lower()
+        Connector_Name = i[2].strip().lower()
+        Type = i[3].strip().lower()
+        Size = i[4].strip()
+        if Status == 'unknown':
+            continue
+        index = Connector_Name.lstrip('dimm_')
+        v = map_value(Status)
+        if v < value:
+            value = v
+        addverb('memory', Type, Connector_Name, Status, Size)
+
+    addmsg('memory', value)
+
+
+# disk raidcard
+def check_raidcard():
+    cmd = 'omreport storage controller -fmt ssv'
+    stdout, stderr = execute(cmd)
+    ctrlers = [c for c in stdout.splitlines() if 'Applicable' in c]
+    ids = []
+    value = 2
+    if not ctrlers:
+        return
+    for line in ctrlers:
+        i = line.split(';')
+        ID = i[0].strip()
+        Status = i[1].strip()
+        Name = i[2].strip()
+        Slot_ID = i[3].strip()
+        State = i[4].strip()
+        Firmware_Version = i[5].strip()
+        Latest_Available_Firmware_Version = i[6].strip()
+        Driver_Version = i[7].strip()
+        Minimum_Required_Driver_Version = i[8].strip()
+        Storport_Driver_Version = i[9].strip()
+        Minimum_Required_Storport_Driver_Version = i[10].strip()
+        Number_of_Connectors = i[11].strip()
+        Rebuild_Rate = i[12].strip()
+        BGI_Rate = i[13].strip()
+        Check_Consistency_Rate = i[14].strip()
+        Reconstruct_Rate = i[15].strip()
+        Alarm_State = i[16].strip()
+        Cluster_Mode = i[17].strip()
+        SCSI_Initiator_ID = i[18].strip()
+        Cache_Memory_Size = i[19].strip()
+        Patrol_Read_Mode = i[20].strip()
+        Patrol_Read_State = i[21].strip()
+        Patrol_Read_Rate = i[22].strip()
+        Patrol_Read_Iterations = i[23].strip()
+        Abort_Check_Consistency_on_Error = i[24].strip()
+        Allow_Revertible_Hot_Spare_and_Replace_Member = i[25].strip()
+        Load_Balance = i[26].strip()
+        Auto_Replace_Member_on_Predictive_Failure = i[27].strip()
+        Redundant_Path_view = i[28].strip()
+        CacheCade_Capable = i[29].strip()
+        Persistent_Hot_Spare = i[30].strip()
+        Encryption_Capable = i[31].strip()
+        Encryption_Key_Present = i[32].strip()
+        Encryption_Mode = i[33].strip()
+        Preserved_Cache = i[34].strip()
+        if len(i) == 36:
+            T10_Protection_Information_Capable = i[35].strip()
+        elif len(i) == 40:
+            Spin_Down_Unconfigured_Drives = i[35].strip()
+            Spin_Down_Hot_Spares = i[36].strip()
+            Spin_Down_Configured_Drives = i[37].strip()
+            Automatic_Disk_Power_Saving_Idle_C = i[38].strip()
+            T10_Protection_Information_Capable = i[39].strip()
+
+        v = map_value(Status)
+        if v < value:
+            value = v
+        ids.append(ID)
+        addverb('raidcard', Name, ID, Status, State)
+
+    addmsg('raidcard', value)
+    return(ids)
+
+
+# pdisk
+def check_pdisk(ctrlers=[0]):
+    if not ctrlers:
+        return
+    value = 2
+    for cid in ctrlers:
+        cmd = 'omreport storage pdisk controller=%s -fmt ssv' % cid
+        stdout, stderr = execute(cmd)
+        pdisks = [p for p in stdout.splitlines() if 'bytes' in p]
+        for line in pdisks:
+            i = line.split(';')
+            ID = i[0].strip()
+            Status = i[1].strip()
+            Name = i[2].strip()
+            State = i[3].strip()
+            Power_Status = i[4].strip()
+            Bus_Protocol = i[5].strip()
+            Media = i[6].strip()
+            Part_of_Cache_Pool = i[7].strip()
+            Remaining_Rated_Write_Endurance = i[8].strip()
+            Failure_Predicted = i[9].strip()
+            Revision = i[10].strip()
+            Driver_Version = i[11].strip()
+            Model_Number = i[12].strip()
+            T10_PI_Capable = i[13].strip()
+            Certified = i[14].strip()
+            Encryption_Capable = i[15].strip()
+            Encrypted = i[16].strip()
+            Progress = i[17].strip()
+            Mirror_Set_ID = i[18].strip()
+            Capacity = i[19].strip()
+            Used_RAID_Disk_Space = i[20].strip()
+            Available_RAID_Disk_Space = i[21].strip()
+            Hot_Spare = i[22].strip()
+            Vendor_ID = i[23].strip()
+            Product_ID = i[24].strip()
+            Serial_No = i[25].strip()
+            Part_Number = i[26].strip()
+            Negotiated_Speed = i[27].strip()
+            Capable_Speed = i[28].strip()
+            PCIe_Maximum_Link_Width = i[29].strip()
+            PCIe_Negotiated_Link_Width = i[30].strip()
+            Sector_Size = i[31].strip()
+            if len(i) > 33:
+                Device_Write_Cache = i[32].strip()
+                Manufacture_Day = i[33].strip()
+                Manufacture_Week = i[34].strip()
+                Manufacture_Year = i[35].strip()
+                SAS_Address = i[36].strip()
+            info = {}
+            info = {'Bus_Protocol': Bus_Protocol, 'Media': Media,
+                    'Capacity': Capacity, 'State': State,
+                    'Vendor_ID': Vendor_ID,
+                    'Serial_No': Serial_No}
+            if Progress != 'Not Applicable':
+                info['Progress'] = Progress
+
+            v = map_value(Status)
+            if v < value:
+                value = v
+            addverb('pdisk', Product_ID, ID, Status, info)
+
+    addmsg('pdisk', value)
+
+
+# vdisk
+def check_vdisk(ctrlers=[0]):
+    if not ctrlers:
+        return
+    value = 2
+    for cid in ctrlers:
+        cmd = 'omreport storage vdisk controller=%s -fmt ssv' % cid
+        stdout, stderr = execute(cmd)
+        vdisks = [v for v in stdout.splitlines() if 'bytes' in v]
+        for line in vdisks:
+            i = line.split(';')
+            ID = i[0].strip()
+            Status = i[1].strip()
+            Name = i[2].strip()
+            State = i[3].strip()
+            Hot_Spare_Policy_violated = i[4].strip()
+            if len(i) == 19:
+                Virtual_Disk_Bad_Blocks = i[5].strip()
+                Encrypted = i[6].strip()
+                Layout = i[7].strip()
+                Size = i[8].strip()
+                T10_Protection_Information_Status = i[9].strip()
+                Associated_Fluid_Cache_State = i[10].strip()
+                Device_Name = i[11].strip()
+                Bus_Protocol = i[12].strip()
+                Media = i[13].strip()
+                Read_Policy = i[14].strip()
+                Write_Policy = i[15].strip()
+                Cache_Policy = i[16].strip()
+                Stripe_Element_Size = i[17].strip()
+                Disk_Cache_Policy = i[18].strip()
+            elif len(i) == 18:
+                Encrypted = i[5].strip()
+                Layout = i[6].strip()
+                Size = i[7].strip()
+                T10_Protection_Information_Status = i[8].strip()
+                Associated_Fluid_Cache_State = i[9].strip()
+                Device_Name = i[10].strip()
+                Bus_Protocol = i[11].strip()
+                Media = i[12].strip()
+                Read_Policy = i[13].strip()
+                Write_Policy = i[14].strip()
+                Cache_Policy = i[15].strip()
+                Stripe_Element_Size = i[16].strip()
+                Disk_Cache_Policy = i[17].strip()
+            elif len(i) == 16:
+                Encrypted = i[5].strip()
+                Layout = i[6].strip()
+                Size = i[7].strip()
+                Device_Name = i[8].strip()
+                Bus_Protocol = i[9].strip()
+                Media = i[10].strip()
+                Read_Policy = i[11].strip()
+                Write_Policy = i[12].strip()
+                Cache_Policy = i[13].strip()
+                Stripe_Element_Size = i[14].strip()
+                Disk_Cache_Policy = i[15].strip()
+            info = {}
+            info = {'Bus_Protocol': Bus_Protocol, 'Media': Media,
+                    'Device_Name': Device_Name, 'Size': Size, 'State': State}
+            if len(i) == 19:
+                info['Virtual_Disk_Bad_Blocks'] = Virtual_Disk_Bad_Blocks
+
+            v = map_value(Status)
+            if v < value:
+                value = v
+            addverb('vdisk', Layout, ID, Status, info)
+
+    addmsg('vdisk', value)
+
+# raidcard battery
+def check_raidcard_bat():
+    cmd = 'omreport storage battery -fmt ssv'
+    stdout, stderr = execute(cmd)
+    batteries = [bat for bat in stdout.splitlines() if 'Battery' in bat]
+    if not batteries:
+        return
+    value = 2
+    for line in batteries:
+        i = line.split(';')
+        ID = i[0].strip()
+        Status = i[1].strip()
+        Name = i[2].strip()
+        State = i[3].strip()
+        Recharge_Count = i[4].strip()
+        Max_Recharge_Count = i[5].strip()
+        Learn_State = i[6].strip()
+        Next_Learn_Time = i[7].strip()
+        Maximum_Learn_Delay = i[8].strip()
+        try:
+            Learn_Mode = i[9].strip()
+        except:
+            Learn_Mode = False
+
+        v = map_value(Status)
+        if v < value:
+            value = v
+        addverb('raidcard_bat', Name, ID, Status, Learn_State)
+
+    addmsg('raidcard_bat', value)
+
+# bios
+def check_bios():
+    cmd = 'omreport chassis biossetup -fmt ssv'
+    stdout, stderr = execute(cmd)
+    bsets = [b for b in stdout.splitlines() if 'C State' in b or 'C1-E' in b or
+            'C1E' in b]
+    if not bsets:
+        return
+    value = 2
+    for line in bsets:
+        i = line.split(';')
+        ATTRIBUTE = i[0].strip().lower()
+        if 'c state' in ATTRIBUTE:
+            index = 'cstate'
+        else:
+            index = 'c1e'
+        VALUE = i[1].strip()
+        if VALUE == 'Enabled':
+            Status = 'warn'
+        elif VALUE == 'Disabled':
+            Status = 'ok'
+        else:
+            continue
+        v = map_value(Status)
+        if v < value:
+            value = v
+        addverb('bios', "bios_setting", ATTRIBUTE, Status, VALUE)
+
+    addmsg('bios', value)
+
+
+# cmos battery
+def check_cmos_bat():
+    cmd = 'omreport chassis batteries -fmt ssv'
+    stdout, stderr = execute(cmd)
+    bats = [battery for battery in stdout.splitlines() if 'CMOS' in battery]
+    if not bats:
+        return
+    value = 2
+    for line in bats:
+        i = line.split(';')
+        Index = i[0].strip()
+        Status = i[1].strip()
+        Probe_Name = i[2].strip()
+        Reading = i[3].strip()
+
+        v = map_value(Status)
+        if v < value:
+            value = v
+        addverb('cmos_bat', Probe_Name, Index, Status, Reading)
+
+    addmsg('cmos_bat', value)
+
+
+# fan
+def check_fan():
+    cmd = 'omreport chassis fans -fmt ssv'
+    stdout, stderr = execute(cmd)
+    fans = [fan for fan in stdout.splitlines() if 'RPM' in fan]
+    if not fans:
+        return
+    value = 2
+    for line in fans:
+        i = line.split(';')
+        Index = i[0].strip()
+        Status = i[1].strip()
+        Probe_Name = i[2].strip()
+        Reading = i[3].strip()
+        Minimum_Warning_Threshold = i[4].strip()
+        Maximum_Warning_Threshold = i[5].strip()
+        Minimum_Failure_Threshold = i[6].strip()
+        Maximum_Failure_Threshold = i[7].strip()
+        v = map_value(Status)
+        if v < value:
+            value = v
+        addverb('fan', Probe_Name, Index, Status, Reading)
+
+    addmsg('fan', value)
+
+
+# power
+def check_power():
+    cmd = 'omreport chassis pwrmonitoring -fmt ssv'
+    stdout, stderr = execute(cmd)
+    powers = [pwr for pwr in stdout.splitlines() if 'System Board' in pwr]
+    if not powers:
+        return
+    value = 2
+    for line in powers:
+        i = line.split(';')
+        Index = i[0].strip()
+        Status = i[1].strip()
+        Probe_Name = i[2].strip()
+        Reading = i[3].strip()
+        Warning_Threshold = i[4].strip()
+        Failure_Threshold = i[5].strip()
+        v = map_value(Status)
+        w = Reading.split()[0]
+        if w > value:
+            value = w
+        addverb('power', Probe_Name, Index, Status, Reading)
+
+    addmsg('power', value)
+
+
+# board temp
+def check_board_temp():
+    cmd = 'omreport chassis temps -fmt ssv'
+    stdout, stderr = execute(cmd)
+    temp = [t for t in stdout.splitlines() if 'Board' in t]
+    if not temp:
+        return
+    value = 2
+    for line in temp:
+        i = line.split(';')
+        Index = i[0].strip()
+        Status = i[1].strip()
+        Probe_Name = i[2].strip()
+        Reading = i[3].strip().split()[0]
+        Minimum_Warning_Threshold = i[4].strip()
+        Maximum_Warning_Threshold = i[5].strip()
+        Minimum_Failure_Threshold = i[6].strip()
+        Maximum_Failure_Threshold = i[7].strip()
+        v = float(Reading)
+        if v > value:
+            value = v
+        addverb('board_temp', Probe_Name, Index, Status, Reading)
+
+    addmsg('board_temp', value)
+
+
+# cpu temp
+def check_cpu_temp():
+    cmd = 'sensors'
+    stdout, stderr = execute(cmd)
+    lines = stdout.splitlines()
+    temps = []
+    id = False
+    temp = {}
+    for line in lines:
+        if line.startswith('coretemp'):
+            if line != id:
+                id = line
+                temp = {}
+                value = 0
+                temp['id'] = id
+        elif line.startswith('Core'):
+            lastcore = True
+            key = line.split(':')[0]
+            vv = line.split(':')[1].split()[0]
+            v = vv.split('\xc2\xb0C')[0].split('+')[1]
+            if float(v) > value:
+                value = float(v)
+                temp['core'] = key
+                temp['reading'] = value
+        elif line == '' and lastcore:
+            if len(temp) != 0:
+                temps.append(temp)
+        else:
+            lastcore = False
+
+    value = 2
+    for temp in temps:
+        Index = '%d' % temps.index(temp)
+        Probe_Name = temp['id']
+        Reading = temp['reading']
+        Maximum_Warning_Threshold = 80
+        Maximum_Failure_Threshold = 90
+        if Reading >= Maximum_Failure_Threshold:
+            Status = 'crit'
+        elif Reading >= Maximum_Warning_Threshold:
+            Status = 'warn'
+        else:
+            Status = 'ok'
+        if Reading > value:
+            value = Reading
+        addverb('cpu_temp', Probe_Name, Index, Status, Reading)
+
+    addmsg('cpu_temp', value)
+
+
+def check(target=False):
+    if not target:
+        check_cpu()
+        check_memory()
+        ctrlers = check_raidcard()
+        check_pdisk(ctrlers=ctrlers)
+        check_vdisk(ctrlers=ctrlers)
+        check_raidcard_bat()
+        check_cmos_bat()
+        check_bios()
+        check_fan()
+        check_power()
+        check_board_temp()
+        check_cpu_temp()
+    elif target == 'cpu':
+        check_cpu()
+    elif target == 'memory':
+        check_memory()
+    elif target == 'raidcard':
+        check_raidcard()
+    elif target == 'pdisk':
+        c = check_raidcard()
+        check_pdisk(c)
+    elif target == 'vdisk':
+        c = check_raidcard()
+        check_vdisk(c)
+    elif target == 'raidcard_bat':
+        check_raidcard_bat()
+    elif target == 'cmos_bat':
+        check_cmos_bat()
+    elif target == 'bios':
+        check_bios()
+    elif target == 'fan':
+        check_fan()
+    elif target == 'power':
+        check_power()
+    elif target == 'board_temp':
+        check_board_temp()
+    elif target == 'cpu_temp':
+        check_cpu_temp()
+
+    return messages
+
+def push(message):
+    try:
+        urllib2.urlopen(
+            url  = 'http://127.0.0.1:1988/v1/push',
+            data = json.dumps(message)
+            )
+    except:
+        pass
+
+metrics = ['cpu', 'memory', 'raidcard', 'pdisk', 'vdisk', 'raidcard_bat',
+        'bios', 'cmos_bat', 'fan', 'power', 'board_temp', 'cpu_temp']
+parser = OptionParser()
+parser.add_option("-p", "--push", action="store_true", dest="push", help="push result to agent")
+parser.add_option("-d", "--debug", action="store_true", dest="debug", help="output debug info")
+parser.add_option("-m", "--metric", action="store", dest="metric", help="check special metric")
+parser.add_option("-s", "--step", action="store", dest="step", help="check special metric")
+(options, args) = parser.parse_args()
+if not options.step:
+    step = 600
+else:
+    step = int(options.step)
+metric=None
+if options.metric:
+    metric = options.metric
+    if metric not in metrics:
+        print __doc__
+        parser.print_help()
+        exit(1)
+messages = check(target=metric)
+if options.push:
+    push(messages)
+else:
+    if options.debug:
+        print json.dumps(messages, indent=2)
+    else:
+        print json.dumps(verbs, indent=2)
